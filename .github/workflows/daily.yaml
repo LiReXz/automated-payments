@@ -5,7 +5,7 @@ on:
     # Runs every day at 15:30 UTC (~16:30 Madrid time in winter)
     - cron: '30 15 * * *'
   workflow_dispatch:        # Allows manual trigger
-  
+
 jobs:
   run-daily:
     runs-on: ubuntu-latest
@@ -19,7 +19,7 @@ jobs:
         run: |
           # Get day of week (1=Monday, 7=Sunday)
           DAY_OF_WEEK=$(date +%u)
-          if [ "$DAY_OF_WEEK" -ge 6 ]; then
+          if [ "$DAY_OF_WEEK" -ge 3 ]; then
             echo "Today is weekend. Exiting workflow."
             exit 0
           fi
