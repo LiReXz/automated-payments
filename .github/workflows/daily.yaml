@@ -1,0 +1,39 @@
+name: Daily Execution (16:30 Madrid Time)
+
+on:
+  schedule:
+    # Runs every day at 15:30 UTC (~16:30 Madrid time in winter)
+    - cron: '30 15 * * *'
+  workflow_dispatch:        # Allows manual trigger
+  
+jobs:
+  run-daily:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Skip weekends and holidays
+      - name: Skip weekends and holidays
+        run: |
+          # Get day of week (1=Monday, 7=Sunday)
+          DAY_OF_WEEK=$(date +%u)
+          if [ "$DAY_OF_WEEK" -ge 6 ]; then
+            echo "Today is weekend. Exiting workflow."
+            exit 0
+          fi
+
+          # Get today's date in DD/MM format
+          TODAY=$(date +"%d/%m")
+          echo "Today is $TODAY"
+
+          # Check holidays.txt
+          if [ -f holidays.txt ]; then
+            if grep -q "^$TODAY$" holidays.txt; then
+              echo "Today is a holiday. Exiting workflow."
+              exit 0
+            fi
+          fi
+
+          echo "Not weekend or holiday. Continuing workflow."
