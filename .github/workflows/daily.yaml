@@ -1,4 +1,4 @@
-name: Daily Execution (16:30 Madrid Time)
+name: Daily Execution
 
 on:
   schedule:
@@ -19,7 +19,7 @@ jobs:
         run: |
           # Get day of week (1=Monday, 7=Sunday)
           DAY_OF_WEEK=$(date +%u)
-          if [ "$DAY_OF_WEEK" -ge 3 ]; then
+          if [ "$DAY_OF_WEEK" -ge 6 ]; then
             echo "Today is weekend. Exiting workflow."
             exit 0
           fi
@@ -37,3 +37,43 @@ jobs:
           fi
 
           echo "Not weekend or holiday. Continuing workflow."
+
+
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      # Step 3: Setup Node.js
+      - name: Setup Node.js
+        if: steps.calendar.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # Step 4: Install dependencies
+      - name: Install dependencies
+        if: steps.calendar.outputs.skip == 'false'
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      # Step 5: Run Playwright tests
+      - name: Run Playwright script
+        if: steps.calendar.outputs.skip == 'false'
+        run: npx playwright test --project=chromium --reporter=list
+        env:
+          USER_EMAIL: ${{ secrets.USER_EMAIL }}
+          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
+          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}
+          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
+          CARD_CVV: ${{ secrets.CARD_CVV }}
+
+      # Step 6: Add workflow run summary
+      - name: Set run description
+        if: always()
+        run: |
+          if [ "${{ steps.calendar.outputs.skip }}" == "true" ]; then
+            echo "Setting description: Skipped (holiday or weekend)"
+            gh run edit ${{ github.run_id }} --display-name "Skipped (holiday or weekend)"
+          else
+            echo "Setting description: Executed normally"
+            gh run edit ${{ github.run_id }} --display-name "Executed normally"
+          fi
