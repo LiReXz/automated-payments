@@ -9,6 +9,9 @@ on:
 jobs:
   run-daily:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
     steps:
       # Step 1: Checkout repository
       - name: Checkout repository
@@ -17,47 +20,36 @@ jobs:
       # Step 2: Skip weekends and holidays
       - name: Skip weekends and holidays
         run: |
-          # Get day of week (1=Monday, 7=Sunday)
           DAY_OF_WEEK=$(date +%u)
+          TODAY=$(date +"%d/%m")
+          echo "Today is $TODAY (Day $DAY_OF_WEEK)"
+
           if [ "$DAY_OF_WEEK" -ge 6 ]; then
-            echo "Today is weekend. Exiting workflow."
+            echo "Weekend detected. Exiting workflow."
             exit 0
           fi
 
-          # Get today's date in DD/MM format
-          TODAY=$(date +"%d/%m")
-          echo "Today is $TODAY"
-
-          # Check holidays.txt
-          if [ -f holidays.txt ]; then
-            if grep -q "^$TODAY$" holidays.txt; then
-              echo "Today is a holiday. Exiting workflow."
-              exit 0
-            fi
+          if [ -f holidays.txt ] && grep -q "^$TODAY$" holidays.txt; then
+            echo "Holiday detected. Exiting workflow."
+            exit 0
           fi
 
-          echo "Not weekend or holiday. Continuing workflow."
-
-
-          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "Not a weekend or holiday. Workflow continues."
 
       # Step 3: Setup Node.js
       - name: Setup Node.js
-        if: steps.calendar.outputs.skip == 'false'
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
       # Step 4: Install dependencies
       - name: Install dependencies
-        if: steps.calendar.outputs.skip == 'false'
         run: |
           npm ci
           npx playwright install --with-deps
 
-      # Step 5: Run Playwright tests
+      # Step 5: Run Playwright script
       - name: Run Playwright script
-        if: steps.calendar.outputs.skip == 'false'
         run: npx playwright test --project=chromium --reporter=list
         env:
           USER_EMAIL: ${{ secrets.USER_EMAIL }}
@@ -66,14 +58,9 @@ jobs:
           CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
           CARD_CVV: ${{ secrets.CARD_CVV }}
 
-      # Step 6: Add workflow run summary
-      - name: Set run description
+      # Step 6: Update workflow description
+      - name: Set workflow description
         if: always()
         run: |
-          if [ "${{ steps.calendar.outputs.skip }}" == "true" ]; then
-            echo "Setting description: Skipped (holiday or weekend)"
-            gh run edit ${{ github.run_id }} --display-name "Skipped (holiday or weekend)"
-          else
-            echo "Setting description: Executed normally"
-            gh run edit ${{ github.run_id }} --display-name "Executed normally"
-          fi
+          echo "Setting workflow description to indicate execution"
+          gh run edit ${{ github.run_id }} --display-name "Executed normally"
