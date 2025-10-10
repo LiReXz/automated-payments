@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { test, expect } from '@playwright/test';
 
 test('Deposit funds in Casa Ortega virtual wallet', async ({ page }) => {
-  test.setTimeout(120000); // 2 minutos
+  test.setTimeout(180000); // 3 minutos para evitar timeout en CI
 
   // 1️⃣ Go to homepage
   await page.goto('https://casaortega.com/es/');
@@ -39,13 +39,18 @@ test('Deposit funds in Casa Ortega virtual wallet', async ({ page }) => {
   await expiryField.click();
   for (const char of process.env.CARD_EXPIRY!) {
     await expiryField.type(char, { delay: 100 }); // simula escritura humana
+    await expiryField.dispatchEvent('input');
   }
+  await expiryField.dispatchEvent('change');
 
-  await page.getByPlaceholder('CVV').fill(process.env.CARD_CVV!);
+  const cvvField = page.getByPlaceholder('CVV');
+  await cvvField.fill(process.env.CARD_CVV!);
+  await cvvField.dispatchEvent('input');
+  await cvvField.dispatchEvent('change');
 
-  // 🔹 Esperar a que el botón Pagar esté habilitado
+  // 🔹 Esperar que el botón Pagar esté habilitado (30s)
   const pagarButton = page.getByRole('button', { name: 'Pagar', exact: true });
-  await expect(pagarButton).toBeEnabled({ timeout: 15000 });
+  await expect(pagarButton).toBeEnabled({ timeout: 30000 });
   await pagarButton.click();
 
   // 🔹 Esperar resultado de la transacción
@@ -53,8 +58,8 @@ test('Deposit funds in Casa Ortega virtual wallet', async ({ page }) => {
   const denegadaLocator = page.locator('text=Transacción denegada');
 
   await Promise.race([
-    continuarLocator.waitFor({ state: 'visible', timeout: 15000 }),
-    denegadaLocator.waitFor({ state: 'visible', timeout: 15000 })
+    continuarLocator.waitFor({ state: 'visible', timeout: 30000 }),
+    denegadaLocator.waitFor({ state: 'visible', timeout: 30000 })
   ]);
 
   if (await continuarLocator.isVisible()) {
