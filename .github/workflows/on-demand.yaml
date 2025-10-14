@@ -59,7 +59,7 @@ jobs:
       - name: Generate timestamp for artifact
         if: always() && github.event_name != 'pull_request'
         run: |
-          TIMESTAMP=$(date +%Y%m%d-%H%M)
+          TIMESTAMP=$(date +%Y%m%d)
           echo "ARTIFACT_NAME=protected-artifacts-manual-${TIMESTAMP}" >> $GITHUB_ENV
 
       - name: Upload password-protected artifacts
@@ -75,18 +75,28 @@ jobs:
         if: always()
         run: |
           # Analizar el resultado de la transacción, no solo del workflow
-          if grep -q "Transaction successful\|Payment completed\|Pago exitoso\|Depósito realizado\|realizado correctamente\|Continuar" test-results/*/test-results.xml test-results/*/*.log playwright-report/index.html 2>/dev/null; then
-            STATUS="✅ ÉXITO"
-            MESSAGE="🎉 El depósito automático de Casa Ortega (MANUAL) se realizó correctamente!"
-          elif grep -q "Transaction denied\|Payment failed\|denegad\|falló\|rechazad" test-results/*/test-results.xml test-results/*/*.log playwright-report/index.html 2>/dev/null; then
+          echo "=== Analizando resultados de la transacción ==="
+          
+          # Buscar primero indicadores de fallo/denegación (mayor prioridad)
+          if grep -qir "Payment was denied\|transaction declined\|Pago denegado\|transacción denegada\|transaction denied\|payment failed\|denegad\|falló\|rechazad" test-results/ playwright-report/ 2>/dev/null; then
             STATUS="❌ TRANSACCIÓN DENEGADA"
             MESSAGE="💳 La transacción fue denegada por el procesador de pagos (MANUAL)."
+            echo "Detectado: Transacción denegada"
+          # Luego buscar indicadores de éxito  
+          elif grep -qi "transaction successful\|payment completed\|pago exitoso\|depósito realizado\|realizado correctamente\|continuar" test-results/ playwright-report/ 2>/dev/null; then
+            STATUS="✅ ÉXITO"
+            MESSAGE="🎉 El depósito automático de Casa Ortega (MANUAL) se realizó correctamente!"
+            echo "Detectado: Transacción exitosa"
+          # Error técnico del workflow
           elif [ "${{ job.status }}" == "failure" ]; then
             STATUS="❌ ERROR TÉCNICO"
             MESSAGE="⚠️ Error técnico en la ejecución del workflow manual. Revisa los logs."
+            echo "Detectado: Error técnico"
+          # Estado desconocido
           else
             STATUS="⚠️ ESTADO DESCONOCIDO"
             MESSAGE="🔍 No se pudo determinar el resultado de la transacción manual. Revisa el reporte."
+            echo "No se encontraron patrones reconocidos"
           fi
           
           FULL_MESSAGE="🏦 *Automated Payments - MANUAL*
