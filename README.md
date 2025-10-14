@@ -9,318 +9,111 @@
 
 **Automation system for Casa Ortega deposits with intelligent Telegram notifications**
 
-[🚀 Manual Execution](#-manual-execution) • [⚙️ Configuration](#️-configuration) • [📋 Variables](#-environment-variables) • [🔔 Notifications](#-notifications)
-
 </div>
 
 ---
 
 ## 📖 Description
 
-This project automates the deposit process for **Casa Ortega** virtual wallet using Playwright and GitHub Actions. The system:
+This project automates the deposit process for **Casa Ortega** virtual wallet using Playwright and GitHub Actions. The system intelligently detects transaction results and sends real-time notifications via Telegram.
 
-- 🎯 **Automates** the complete deposit process (login → navigation → payment)
-- 🤖 **Intelligently detects** transaction results
-- 📱 **Notifies** real-time results via Telegram
-- 🔒 **Protects** sensitive information with encrypted artifacts
-- ⏰ **Executes** automatically respecting business days and holidays
-- 🛠️ **Provides** complete debugging with screenshots
-
-## 🏗️ System Architecture
-
-```mermaid
-graph TD
-    A[GitHub Actions] -->|Executes| B[Playwright Test]
-    B -->|Automates| C[Casa Ortega Website]
-    C -->|Result| D[Transaction Analysis]
-    D -->|Success Pattern| E[✅ Success Status]
-    D -->|Denied Pattern| F[❌ Denied Status]
-    D -->|Error Pattern| G[⚠️ Error Status]
-    D -->|No Pattern| H[❓ Unknown Status]
-    E -->|Sends| I[Telegram: Success Message]
-    F -->|Sends| J[Telegram: Denied Message]
-    G -->|Sends| K[Telegram: Error Message]
-    H -->|Sends| L[Telegram: Unknown Message]
-    B -->|Generates| M[Screenshots + Reports]
-    M -->|Encrypts| N[Protected Artifacts]
-```
-
-## 🚀 Available Workflows
+## 🚀 Workflows
 
 ### 🕐 Daily Automation (`daily.yaml`)
 - **Execution**: Automatic at **15:00 Spanish time** (Monday to Friday)
-  - 🌞 **Summer (CEST)**: 13:00 UTC (April-October)
-  - ❄️ **Winter (CET)**: 14:00 UTC (November-March)
 - **Respects**: Holidays defined in `holidays.txt`
-- **Function**: Executes scheduled deposits with automatic time adjustment
+- **Time zones**: Automatically adjusts for Spanish summer/winter time
 
 ### 🎮 Manual Execution (`on-demand.yaml`)
 - **Execution**: Manual from GitHub Actions
-- **Function**: Allows testing and on-demand executions
-- **Ignores**: Business day restrictions
+- **Function**: Testing and on-demand executions
 
-## ⚙️ Configuration
+## 📋 Environment Variables (GitHub Secrets)
 
-### 1️⃣ Clone Repository
-```bash
-git clone https://github.com/LiReXz/automated-payments.git
-cd automated-payments
-```
-
-### 2️⃣ Install Dependencies
-```bash
-npm install
-npx playwright install --with-deps
-```
-
-### 3️⃣ Configure Environment Variables
 Configure the following variables in **GitHub Secrets** (`Settings > Secrets and variables > Actions`):
 
-## 📋 Environment Variables
-
 ### 🔐 Casa Ortega Credentials
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `USER_EMAIL` | Email for your Casa Ortega account | `user@email.com` |
-| `USER_PASSWORD` | Account password | `MyPassword123!` |
+- `USER_EMAIL` - Your Casa Ortega account email
+- `USER_PASSWORD` - Account password
 
-### 💳 Credit/Debit Card Data
-| Variable | Description | Format | Example |
-|----------|-------------|--------|---------|
-| `CARD_NUMBER` | Card number (no spaces) | `1234567890123456` | `4111111111111111` |
-| `CARD_EXPIRY` | Expiration date | `MM/YY` | `12/25` |
-| `CARD_CVV` | Security code | `123` | `456` |
+### 💳 Card Data
+- `CARD_NUMBER` - Card number (no spaces)
+- `CARD_EXPIRY` - Expiration date (MM/YY format)
+- `CARD_CVV` - Security code
 
 ### 📱 Telegram Configuration
-| Variable | Description | How to Obtain |
-|----------|-------------|---------------|
-| `BOT_TOKEN` | Telegram bot token | 1. Talk to [@BotFather](https://t.me/botfather)<br>2. Execute `/newbot`<br>3. Follow instructions<br>4. Copy the token |
-| `CHAT_ID` | Chat ID where to receive notifications | **Method with your own bot:**<br>1. Send any message to your bot<br>2. Go to: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`<br>3. Look for `"chat":{"id":123456789}`<br>4. That number is your CHAT_ID |
-
-## 🤖 Detailed Telegram Configuration
-
-### 1️⃣ Create the Bot
-1. Talk to [@BotFather](https://t.me/botfather) on Telegram
-2. Send `/newbot`
-3. Follow instructions to name your bot
-4. **Save the token** provided (format: `123456789:ABCdefGHIjklMNOpqrSTUvwxYZ`)
-
-### 2️⃣ Get your CHAT_ID
-1. **Send a message** to your newly created bot (any text)
-2. **Open your browser** and go to:
-   ```
-   https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
-   ```
-   > Replace `<YOUR_BOT_TOKEN>` with your bot's actual token
-3. **Look in the response** for something like:
-   ```json
-   "chat": {
-     "id": 123456789,
-     "first_name": "Your Name",
-     "type": "private"
-   }
-   ```
-4. **The `id` number** is your CHAT_ID (example: `123456789`)
-
-### 3️⃣ For Groups (Optional)
-If you want notifications in a group:
-1. Add your bot to the group
-2. Send a message mentioning the bot: `@your_bot_name test`
-3. Use the same getUpdates URL
-4. The group CHAT_ID will be **negative** (example: `-987654321`)
+- `BOT_TOKEN` - Get from [@BotFather](https://t.me/botfather)
+- `CHAT_ID` - Your chat ID (send message to bot, then visit `https://api.telegram.org/bot<TOKEN>/getUpdates`)
 
 ## 🔔 Notifications
 
-The system sends intelligent notifications to Telegram with different states:
+The system sends intelligent Telegram notifications with different states:
 
-### ✅ Transacción Exitosa
+### ✅ Successful Transaction
 ```
 🏦 Automated Payments - DAILY
-
-✅ ÉXITO: 🎉 El depósito automático de Casa Ortega se realizó correctamente!
-
-Fecha: 14/10/2025 15:00
-Ver detalles: https://github.com/LiReXz/automated-payments/actions/runs/123456
+✅ SUCCESS: 🎉 Casa Ortega automatic deposit completed successfully!
+Date: 14/10/2025 15:00
 ```
+**No files sent** - Normal operation
 
-### ❌ Transacción Denegada
+### ❌ Denied Transaction
 ```
 🏦 Automated Payments - MANUAL
-
-❌ TRANSACCIÓN DENEGADA: 💳 La transacción fue denegada por el procesador de pagos.
-
-Fecha: 14/10/2025 15:00
-Ver detalles: https://github.com/LiReXz/automated-payments/actions/runs/789012
+❌ TRANSACTION DENIED: 💳 The transaction was denied by the payment processor.
+Date: 14/10/2025 15:00
 ```
+**No files sent** - Payment processor rejection (not a technical error)
 
-### ⚠️ Error Técnico
+### ⚠️ Technical Error
 ```
 🏦 Automated Payments - DAILY
-
-❌ ERROR TÉCNICO: ⚠️ Error técnico en la ejecución del workflow. Revisa los logs.
-
-Fecha: 14/10/2025 15:00
-Ver detalles: https://github.com/LiReXz/automated-payments/actions/runs/345678
+❌ TECHNICAL ERROR: ⚠️ Technical error in workflow execution. Review the logs.
+Date: 14/10/2025 15:00
+📁 Debugging files attached
 ```
+**Files included** - For technical troubleshooting only
 
-## 🚀 Ejecución Manual
+## 📁 File Delivery
 
-1. Ve a la pestaña **Actions** en tu repositorio
-2. Selecciona **"On-Demand Execution"**
-3. Haz clic en **"Run workflow"**
-4. Confirma la ejecución
+**Files are only sent for technical errors or unknown status** - not for successful or denied transactions.
 
-## 🛠️ Desarrollo Local
+- **Automatic ZIP compression** of screenshots, reports, and logs
+- **Direct delivery** via Telegram (no GitHub artifacts)
+- **Size optimization** for files larger than 50MB
 
-### Ejecutar Tests
-```bash
-# Ejecutar test normal
-npm run test:e2e
+## 🔒 Security
 
-# Ejecutar con interfaz gráfica
-npm run test:headed
+- **GitHub Secrets** for all sensitive information with automatic masking
+- **Value masking** in logs to prevent credential exposure
+- **No token exposure** in URLs or logs
+- **Selective file delivery** only for technical debugging
+- All sensitive data automatically filtered in GitHub Actions logs
 
-# Ejecutar en modo debug
-npm run test:debug
-```
-
-### Variables de Entorno Local
-Crea un archivo `.env` en la raíz del proyecto:
-```env
-USER_EMAIL=tu-email@dominio.com
-USER_PASSWORD=tu-password
-CARD_NUMBER=1234567890123456
-CARD_EXPIRY=12/25
-CARD_CVV=123
-```
-
-## 📁 Estructura del Proyecto
+## 📁 Project Structure
 
 ```
 automated-payments/
-├── .github/
-│   └── workflows/
-│       ├── daily.yaml          # Automatización diaria
-│       └── on-demand.yaml      # Ejecución manual
+├── .github/workflows/
+│   ├── daily.yaml          # Daily automation
+│   └── on-demand.yaml      # Manual execution
 ├── scripts/
-│   └── deposit-wallet.spec.ts  # Test principal de Playwright
-├── holidays.txt                # Días festivos (formato YYYY-MM-DD)
-├── package.json                # Dependencias del proyecto
-├── playwright.config.ts        # Configuración de Playwright
-└── README.md                   # Esta documentación
+│   └── deposit-wallet.spec.ts
+├── holidays.txt            # Holiday management
+└── playwright.config.ts
 ```
 
-## 📅 Gestión de Festivos
+## 🛠️ Quick Setup
 
-Edita el archivo `holidays.txt` para agregar días festivos:
-```
-2025-01-01  # Año Nuevo
-2025-12-25  # Navidad
-2025-07-04  # Día de la Independencia
-```
-
-El workflow diario respetará automáticamente estos días.
-
-## ⏰ Dynamic Schedule System
-
-The system automatically adjusts execution time according to official Spanish time:
-
-### 📅 Schedule by Season
-| Season | Spanish Time | UTC Time | Months | Cron Expression |
-|--------|--------------|----------|--------|-----------------|
-| 🌞 **Summer** | 15:00 CEST | 13:00 UTC | April - October | `0 13 * 4-10 *` |
-| ❄️ **Winter** | 15:00 CET | 14:00 UTC | November - March | `0 14 * 11-12,1-3 *` |
-
-### 🔄 Automatic Changes
-- **Change to summer time**: Last Sunday of March
-- **Change to winter time**: Last Sunday of October
-- **Automatic adjustment**: The workflow always executes at 15:00 Spanish local time
-
-> **Note**: GitHub Actions cron jobs use monthly approximations. Exact time changes occur on specific dates, but the system maintains consistency during each season.
-
-## 🔍 Debugging and Encrypted File Delivery
-
-### 📁 Generated Debugging Files
-- 📷 **Screenshots** of each process step
-- 📹 **Videos** of execution (in case of failure) 
-- 📊 **Playwright HTML reports**
-- 📝 **Detailed execution logs**
-
-### 🔐 Encrypted File Delivery via Telegram
-For security reasons, debugging files are delivered encrypted via Telegram instead of GitHub artifacts:
-
-1. **Automatic encryption**: Files are compressed and encrypted using OpenSSL AES-256-CBC
-2. **Auto-generated passwords**: 32-character base64 passwords for each execution
-3. **Size optimization**: Files larger than 50MB are automatically reduced
-4. **Secure delivery**: Password and encrypted file sent separately via Telegram
-5. **No GitHub storage**: Sensitive content is never stored in GitHub artifacts
-
-### 📱 Receiving Encrypted Files
-1. Wait for Telegram notification with execution results
-2. Look for the password in the message: `🔐 Password: [32-character-string]`
-3. Download the encrypted file attachment
-4. Decrypt using: `openssl enc -aes-256-cbc -d -in encrypted_file.enc -out artifacts.zip -pass pass:[password]`
-5. Extract `artifacts.zip` to review debugging files
-
-## 🔒 Security
-
-### ✅ Implemented Security Measures
-- 🔐 **GitHub Secrets** for sensitive information
-- 🎭 **Value masking** in logs to prevent data exposure
-- 🔒 **Encrypted file delivery** via Telegram with auto-generated passwords
-- � **No GitHub artifacts** for sensitive debugging content
-- 🛡️ **Environment variable protection** with automatic masking
-- 🚫 **Sin exposición** de tokens en URLs
-- 🛡️ **Variables de entorno** protegidas
-
-### ⚠️ Importante
-## 🔒 Security
-
-### ✅ Implemented Measures
-- 🔐 **GitHub Secrets** for sensitive information
-- 🎭 **Value masking** in logs
--  **No token exposure** in URLs
-- 🛡️ **Protected environment variables**
-- 👤 **Repository owner-only** artifact access
-- � **Repository-level protection** instead of password encryption
-
-### 🎯 Artifact Security
-- **Generation restriction**: Only repository owner can generate artifacts
-- **Repository permissions**: GitHub-level access control (limited)
-- **Automatic cleanup**: 30-day retention policy
-- **Note**: Anyone with repository read access can download artifacts once generated
-
-### ⚠️ Important
-- Never commit sensitive information to the repository
-- Always use GitHub Secrets for credentials
-- Review logs before making repositories public
-- **Artifacts are visible to all repository collaborators**
-- Consider using private repositories for sensitive automation
-
-## 🤝 Contributing
-
-1. Fork the project
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📜 License
-
-This project is for personal and educational use. Use it responsibly.
-
-## 🆘 Support
-
-If you have problems:
-1. 📋 Review the logs in GitHub Actions
-2. 📥 Download the artifacts for more details
-3. 🔍 Verify that all variables are configured
-4. 📱 Confirm that the Telegram bot works
+1. **Clone**: `git clone https://github.com/LiReXz/automated-payments.git`
+2. **Configure**: Add all environment variables to GitHub Secrets
+3. **Test**: Use manual execution workflow for testing
+4. **Schedule**: Daily workflow runs automatically
 
 ---
 
 <div align="center">
 
-[⬆️ Back to top](#-automated-payments---casa-ortega)
+**⚠️ For personal and educational use only. Use responsibly.**
 
 </div>

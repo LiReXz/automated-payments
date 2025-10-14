@@ -7,7 +7,20 @@ jobs:
   run-on-demand:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+           # Solo agr          # Enviar archivo solo si hay error técnico o estado desconocido (NO para denegaciones)
+          if [ "$TELEGRAM_FILE_READY" = "true" ] && [ -f "telegram-artifacts.zip" ]; then
+            echo "Enviando archivo de debugging por Telegram (solo para errores técnicos)..."
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+              -F chat_id="${CHAT_ID}" \
+              -F document=@telegram-artifacts.zip \
+              -F caption="📁 Archivos de debugging - Solo para errores técnicos, no para transacciones denegadas"
+          fiormación de archivos si es error técnico o desconocido (NO para denegaciones)
+          if [ "$TELEGRAM_FILE_READY" = "true" ]; then
+            FULL_MESSAGE="${FULL_MESSAGE}
+            
+          📁 *Archivos de debugging adjuntos*
+          ⚠️ *Solo se envían para errores técnicos, no para transacciones denegadas*"
+          finame: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -45,64 +58,74 @@ jobs:
           echo "=== Test execution summary ==="
           cat test-results/*/test-failed-*.png 2>/dev/null && echo "Screenshots found" || echo "No failure screenshots"
 
-      - name: Create encrypted artifacts for Telegram
+      - name: Create artifacts for Telegram (Errors Only)
         if: always()
         run: |
-          if [ -d "test-results" ] || [ -f "*.png" ] || [ -d "playwright-report" ]; then
-            echo "Creating encrypted archive for Telegram delivery..."
-            # Crear archivo encriptado con contraseña fuerte
-            TELEGRAM_PASSWORD=$(openssl rand -base64 32)
-            echo "TELEGRAM_PASSWORD=${TELEGRAM_PASSWORD}" >> $GITHUB_ENV
-            
-            # Comprimir y encriptar archivos sensibles
-            zip -r -P "${TELEGRAM_PASSWORD}" telegram-artifacts.zip test-results/ *.png playwright-report/ 2>/dev/null || true
-            
-            # Verificar que el archivo fue creado y no es demasiado grande (max 50MB para Telegram)
-            if [ -f "telegram-artifacts.zip" ]; then
-              FILE_SIZE=$(stat -c%s "telegram-artifacts.zip" 2>/dev/null || stat -f%z "telegram-artifacts.zip" 2>/dev/null || echo "0")
-              echo "Encrypted file size: ${FILE_SIZE} bytes"
-              if [ "${FILE_SIZE}" -gt 52428800 ]; then
-                echo "File too large for Telegram (>50MB), splitting or reducing..."
-                # Crear versión reducida solo con screenshots y logs críticos
-                zip -r -P "${TELEGRAM_PASSWORD}" telegram-artifacts-reduced.zip test-results/*.png playwright-report/index.html 2>/dev/null || true
-                mv telegram-artifacts-reduced.zip telegram-artifacts.zip 2>/dev/null || true
-              fi
-              echo "TELEGRAM_FILE_READY=true" >> $GITHUB_ENV
+          # Analizar el resultado ANTES de crear archivos
+          echo "=== Analizando resultados para determinar si crear archivos ==="
+          
+          # Buscar indicadores de éxito o denegación (NO necesitan archivos de debugging)
+          if grep -qir "Payment was denied\|transaction declined\|Pago denegado\|transacción denegada\|transaction denied\|payment failed\|denegad\|falló\|rechazad" test-results/ playwright-report/ 2>/dev/null; then
+            echo "Transacción denegada detectada - NO se enviarán archivos (no es error técnico)"
+            echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
+            echo "STATUS=❌ TRANSACCIÓN DENEGADA" >> $GITHUB_ENV
+          elif grep -qi "transaction successful\|payment completed\|pago exitoso\|depósito realizado\|realizado correctamente\|continuar" test-results/ playwright-report/ 2>/dev/null; then
+            echo "Transacción exitosa detectada - NO se enviarán archivos (funcionamiento normal)"
+            echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
+            echo "STATUS=✅ ÉXITO" >> $GITHUB_ENV
+          # Solo crear archivos para errores técnicos o estados desconocidos (problemas del workflow)
+          else
+            echo "Error técnico o estado desconocido - SÍ se enviarán archivos para debugging técnico"
+            if [ "${{ job.status }}" == "failure" ]; then
+              echo "STATUS=❌ ERROR TÉCNICO" >> $GITHUB_ENV
             else
+              echo "STATUS=⚠️ ESTADO DESCONOCIDO" >> $GITHUB_ENV
+            fi
+            
+            if [ -d "test-results" ] || [ -f "*.png" ] || [ -d "playwright-report" ]; then
+              echo "Creando archivo ZIP para debugging..."
+              zip -r telegram-artifacts.zip test-results/ *.png playwright-report/ 2>/dev/null || true
+              
+              if [ -f "telegram-artifacts.zip" ]; then
+                FILE_SIZE=$(stat -c%s "telegram-artifacts.zip" 2>/dev/null || stat -f%z "telegram-artifacts.zip" 2>/dev/null || echo "0")
+                echo "Archivo ZIP creado: ${FILE_SIZE} bytes"
+                if [ "${FILE_SIZE}" -gt 52428800 ]; then
+                  echo "Archivo muy grande (>50MB), creando versión reducida..."
+                  zip -r telegram-artifacts-reduced.zip test-results/*.png playwright-report/index.html 2>/dev/null || true
+                  mv telegram-artifacts-reduced.zip telegram-artifacts.zip 2>/dev/null || true
+                fi
+                echo "TELEGRAM_FILE_READY=true" >> $GITHUB_ENV
+              else
+                echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
+              fi
+            else
+              echo "No hay archivos de debugging disponibles"
               echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
             fi
-          else
-            echo "No artifacts to encrypt for Telegram"
-            echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
           fi
 
-      - name: Send Telegram notification with encrypted files
+      - name: Send Telegram notification with files (errors only)
         if: always()
         run: |
-          # Analizar el resultado de la transacción, no solo del workflow
-          echo "=== Analizando resultados de la transacción ==="
-          
-          # Buscar primero indicadores de fallo/denegación (mayor prioridad)
-          if grep -qir "Payment was denied\|transaction declined\|Pago denegado\|transacción denegada\|transaction denied\|payment failed\|denegad\|falló\|rechazad" test-results/ playwright-report/ 2>/dev/null; then
-            STATUS="❌ TRANSACCIÓN DENEGADA"
-            MESSAGE="💳 La transacción fue denegada por el procesador de pagos (MANUAL)."
-            echo "Detectado: Transacción denegada"
-          # Luego buscar indicadores de éxito  
-          elif grep -qi "transaction successful\|payment completed\|pago exitoso\|depósito realizado\|realizado correctamente\|continuar" test-results/ playwright-report/ 2>/dev/null; then
-            STATUS="✅ ÉXITO"
-            MESSAGE="🎉 El depósito automático de Casa Ortega (MANUAL) se realizó correctamente!"
-            echo "Detectado: Transacción exitosa"
-          # Error técnico del workflow
-          elif [ "${{ job.status }}" == "failure" ]; then
-            STATUS="❌ ERROR TÉCNICO"
-            MESSAGE="⚠️ Error técnico en la ejecución del workflow manual. Revisa los logs."
-            echo "Detectado: Error técnico"
-          # Estado desconocido
-          else
-            STATUS="⚠️ ESTADO DESCONOCIDO"
-            MESSAGE="🔍 No se pudo determinar el resultado de la transacción manual. Revisa el reporte."
-            echo "No se encontraron patrones reconocidos"
-          fi
+          # Usar el estado ya determinado en el paso anterior
+          case "$STATUS" in
+            "✅ ÉXITO")
+              MESSAGE="🎉 El depósito automático de Casa Ortega (MANUAL) se realizó correctamente!"
+              ;;
+            "❌ TRANSACCIÓN DENEGADA")
+              MESSAGE="💳 La transacción fue denegada por el procesador de pagos (MANUAL)."
+              ;;
+            "❌ ERROR TÉCNICO")
+              MESSAGE="⚠️ Error técnico en la ejecución del workflow manual. Revisa los logs."
+              ;;
+            "⚠️ ESTADO DESCONOCIDO")
+              MESSAGE="🔍 No se pudo determinar el resultado de la transacción manual. Revisa el reporte."
+              ;;
+            *)
+              STATUS="⚠️ ESTADO DESCONOCIDO"
+              MESSAGE="🔍 No se pudo determinar el resultado de la transacción manual. Revisa el reporte."
+              ;;
+          esac
           
           # Preparar mensaje base
           FULL_MESSAGE="🏦 *Automated Payments - MANUAL*
@@ -112,14 +135,12 @@ jobs:
           Fecha: $(date '+%d/%m/%Y %H:%M')
           Ver detalles: https://github.com/LiReXz/automated-payments/actions/runs/${{ github.run_id }}"
           
-          # Agregar información de archivos si están disponibles
+          # Solo agregar información de archivos si es error técnico o desconocido
           if [ "$TELEGRAM_FILE_READY" = "true" ]; then
             FULL_MESSAGE="${FULL_MESSAGE}
             
-          🔒 *Archivos encriptados adjuntos*
-          Contraseña: \`${TELEGRAM_PASSWORD}\`
-          
-          ⚠️ *Información sensible protegida*"
+          � *Archivos de debugging adjuntos*
+          ⚠️ *Solo se envían archivos en casos de error para debugging*"
           fi
 
           # Enviar mensaje de texto
@@ -128,13 +149,13 @@ jobs:
             -d text="$FULL_MESSAGE" \
             -d parse_mode="Markdown"
           
-          # Enviar archivo encriptado si está disponible
+          # Enviar archivo solo si hay error técnico o estado desconocido
           if [ "$TELEGRAM_FILE_READY" = "true" ] && [ -f "telegram-artifacts.zip" ]; then
-            echo "Enviando archivo encriptado por Telegram..."
+            echo "Enviando archivo de debugging por Telegram (solo para errores)..."
             curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
               -F chat_id="${CHAT_ID}" \
               -F document=@telegram-artifacts.zip \
-              -F caption="🔐 Archivos de debugging encriptados - Contraseña en mensaje anterior"
+              -F caption="� Archivos de debugging - Solo enviados en casos de error técnico o estado desconocido"
           fi
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
