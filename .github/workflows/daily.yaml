@@ -4,20 +4,7 @@ on:
   schedule:
     # Verano (CEST UTC+2): 15:00 ESP = 13:00 UTC
     - cron: '0 13 * 4-10 *'  # Abril a Octubre
-    #          # Solo agr          # Enviar archivo solo si hay error técnico o estado desconocido (NO para denegaciones)
-          if [ "$TELEGRAM_FILE_READY" = "true" ] && [ -f "telegram-artifacts.zip" ]; then
-            echo "Enviando archivo de debugging por Telegram (solo para errores técnicos)..."
-            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
-              -F chat_id="${CHAT_ID}" \
-              -F document=@telegram-artifacts.zip \
-              -F caption="📁 Archivos de debugging - Solo para errores técnicos, no para transacciones denegadas"
-          fiormación de archivos si es error técnico o desconocido (NO para denegaciones)
-          if [ "$TELEGRAM_FILE_READY" = "true" ]; then
-            FULL_MESSAGE="${FULL_MESSAGE}
-            
-          📁 *Archivos de debugging adjuntos*
-          ⚠️ *Solo se envían para errores técnicos, no para transacciones denegadas*"
-          fino (CET UTC+1): 15:00 ESP = 14:00 UTC  
+    # Invierno (CET UTC+1): 15:00 ESP = 14:00 UTC  
     - cron: '0 14 * 11-12,1-3 *'  # Noviembre a Marzo
 
 jobs:
