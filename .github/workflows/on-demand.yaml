@@ -68,12 +68,19 @@ jobs:
       - name: Send Telegram notification
         if: always()
         run: |
-          if [ "${{ job.status }}" == "success" ]; then
+          # Analizar el resultado de la transacción, no solo del workflow
+          if grep -q "Transaction successful\|Payment completed\|Pago exitoso\|Depósito realizado" test-results/*/test-results.xml test-results/*/*.log playwright-report/index.html 2>/dev/null; then
             STATUS="✅ ÉXITO"
-            MESSAGE="🎉 El depósito automático de Casa Ortega (MANUAL) se ejecutó correctamente!"
+            MESSAGE="🎉 El depósito automático de Casa Ortega (MANUAL) se realizó correctamente!"
+          elif grep -q "Transaction denied\|Payment failed\|denegad\|falló\|rechazad" test-results/*/test-results.xml test-results/*/*.log playwright-report/index.html 2>/dev/null; then
+            STATUS="❌ TRANSACCIÓN DENEGADA"
+            MESSAGE="💳 La transacción fue denegada por el procesador de pagos (MANUAL)."
+          elif [ "${{ job.status }}" == "failure" ]; then
+            STATUS="❌ ERROR TÉCNICO"
+            MESSAGE="⚠️ Error técnico en la ejecución del workflow manual. Revisa los logs."
           else
-            STATUS="❌ FALLO"
-            MESSAGE="⚠️ El depósito automático de Casa Ortega (MANUAL) falló. Revisa los logs para más detalles."
+            STATUS="⚠️ ESTADO DESCONOCIDO"
+            MESSAGE="🔍 No se pudo determinar el resultado de la transacción manual. Revisa el reporte."
           fi
           
           FULL_MESSAGE="🏦 *Automated Payments - MANUAL*
