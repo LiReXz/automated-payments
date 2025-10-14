@@ -108,13 +108,13 @@ jobs:
           
 $STATUS: $MESSAGE
 
-Fecha: $(date '+%d/%m/%Y %H:%M')
-Ver detalles: https://github.com/LiReXz/automated-payments/actions/runs/${{ github.run_id }}"
+📅 Fecha: $(date '+%d/%m/%Y %H:%M')
+🔗 Ver detalles: https://github.com/LiReXz/automated-payments/actions/runs/${{ github.run_id }}"
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.CHAT_ID }}" \
             -d text="$FULL_MESSAGE" \
             -d parse_mode="Markdown"
-      env:
-        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-        CHAT_ID: ${{ secrets.CHAT_ID }}
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
