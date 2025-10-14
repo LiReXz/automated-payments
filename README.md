@@ -7,131 +7,136 @@
 ![Playwright](https://img.shields.io/badge/Playwright-1.40.0-green?logo=playwright)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.1.6-blue?logo=typescript)
 
-**Sistema de automatización para depósitos en Casa Ortega con notificaciones inteligentes vía Telegram**
+**Automation system for Casa Ortega deposits with intelligent Telegram notifications**
 
-[🚀 Ejecutar Manual](#-ejecución-manual) • [⚙️ Configuración](#️-configuración) • [📋 Variables](#-variables-de-entorno) • [🔔 Notificaciones](#-notificaciones)
+[🚀 Manual Execution](#-manual-execution) • [⚙️ Configuration](#️-configuration) • [📋 Variables](#-environment-variables) • [🔔 Notifications](#-notifications)
 
 </div>
 
 ---
 
-## 📖 Descripción
+## 📖 Description
 
-Este proyecto automatiza el proceso de depósito de fondos en el monedero virtual de **Casa Ortega** utilizando Playwright y GitHub Actions. El sistema:
+This project automates the deposit process for **Casa Ortega** virtual wallet using Playwright and GitHub Actions. The system:
 
-- 🎯 **Automatiza** el proceso completo de depósito (login → navegación → pago)
-- 🤖 **Detecta inteligentemente** el resultado de las transacciones
-- 📱 **Notifica** resultados en tiempo real vía Telegram
-- 🔒 **Protege** información sensible con artifacts encriptados
-- ⏰ **Ejecuta** automáticamente respetando días laborales y festivos
-- 🛠️ **Proporciona** debugging completo con capturas de pantalla
+- 🎯 **Automates** the complete deposit process (login → navigation → payment)
+- 🤖 **Intelligently detects** transaction results
+- 📱 **Notifies** real-time results via Telegram
+- 🔒 **Protects** sensitive information with encrypted artifacts
+- ⏰ **Executes** automatically respecting business days and holidays
+- 🛠️ **Provides** complete debugging with screenshots
 
-## 🏗️ Arquitectura del Sistema
+## 🏗️ System Architecture
 
 ```mermaid
 graph TD
-    A[GitHub Actions] -->|Ejecuta| B[Playwright Test]
-    B -->|Automatiza| C[Casa Ortega Website]
-    C -->|Resultado| D[Análisis Inteligente]
-    D -->|✅ Éxito| E[Telegram: Éxito]
-    D -->|❌ Denegada| F[Telegram: Denegada]
-    D -->|⚠️ Error| G[Telegram: Error]
-    B -->|Genera| H[Screenshots + Reports]
-    H -->|Encripta| I[Artifacts Protegidos]
+    A[GitHub Actions] -->|Executes| B[Playwright Test]
+    B -->|Automates| C[Casa Ortega Website]
+    C -->|Result| D[Transaction Analysis]
+    D -->|Success Pattern| E[✅ Success Status]
+    D -->|Denied Pattern| F[❌ Denied Status]
+    D -->|Error Pattern| G[⚠️ Error Status]
+    D -->|No Pattern| H[❓ Unknown Status]
+    E -->|Sends| I[Telegram: Success Message]
+    F -->|Sends| J[Telegram: Denied Message]
+    G -->|Sends| K[Telegram: Error Message]
+    H -->|Sends| L[Telegram: Unknown Message]
+    B -->|Generates| M[Screenshots + Reports]
+    M -->|Encrypts| N[Protected Artifacts]
 ```
 
-## 🚀 Workflows Disponibles
+## 🚀 Available Workflows
 
 ### 🕐 Daily Automation (`daily.yaml`)
-- **Ejecución**: Automática a las **15:00 hora española** (lunes a viernes)
-  - 🌞 **Verano (CEST)**: 13:00 UTC (abril-octubre)
-  - ❄️ **Invierno (CET)**: 14:00 UTC (noviembre-marzo)
-- **Respeta**: Festivos definidos en `holidays.txt`
-- **Función**: Ejecuta depósitos de forma programada con ajuste automático de horario
+- **Execution**: Automatic at **15:00 Spanish time** (Monday to Friday)
+  - 🌞 **Summer (CEST)**: 13:00 UTC (April-October)
+  - ❄️ **Winter (CET)**: 14:00 UTC (November-March)
+- **Respects**: Holidays defined in `holidays.txt`
+- **Function**: Executes scheduled deposits with automatic time adjustment
 
 ### 🎮 Manual Execution (`on-demand.yaml`)
-- **Ejecución**: Manual desde GitHub Actions
-- **Función**: Permite pruebas y ejecuciones bajo demanda
-- **Ignora**: Restricciones de días laborales
+- **Execution**: Manual from GitHub Actions
+- **Function**: Allows testing and on-demand executions
+- **Ignores**: Business day restrictions
 
-## ⚙️ Configuración
+## ⚙️ Configuration
 
-### 1️⃣ Clonar el Repositorio
+### 1️⃣ Clone Repository
 ```bash
 git clone https://github.com/LiReXz/automated-payments.git
 cd automated-payments
 ```
 
-### 2️⃣ Instalar Dependencias
+### 2️⃣ Install Dependencies
 ```bash
 npm install
 npx playwright install --with-deps
 ```
 
-### 3️⃣ Configurar Variables de Entorno
-Configura las siguientes variables en **GitHub Secrets** (`Settings > Secrets and variables > Actions`):
+### 3️⃣ Configure Environment Variables
+Configure the following variables in **GitHub Secrets** (`Settings > Secrets and variables > Actions`):
 
-## 📋 Variables de Entorno
+## 📋 Environment Variables
 
-### 🔐 Credenciales de Casa Ortega
-| Variable | Descripción | Ejemplo |
+### 🔐 Casa Ortega Credentials
+| Variable | Description | Example |
 |----------|-------------|---------|
-| `USER_EMAIL` | Email de tu cuenta de Casa Ortega | `usuario@email.com` |
-| `USER_PASSWORD` | Contraseña de tu cuenta | `MiPassword123!` |
+| `USER_EMAIL` | Email for your Casa Ortega account | `user@email.com` |
+| `USER_PASSWORD` | Account password | `MyPassword123!` |
 
-### 💳 Datos de Tarjeta de Crédito/Débito
-| Variable | Descripción | Formato | Ejemplo |
-|----------|-------------|---------|---------|
-| `CARD_NUMBER` | Número de tarjeta (sin espacios) | `1234567890123456` | `4111111111111111` |
-| `CARD_EXPIRY` | Fecha de vencimiento | `MM/YY` | `12/25` |
-| `CARD_CVV` | Código de seguridad | `123` | `456` |
+### 💳 Credit/Debit Card Data
+| Variable | Description | Format | Example |
+|----------|-------------|--------|---------|
+| `CARD_NUMBER` | Card number (no spaces) | `1234567890123456` | `4111111111111111` |
+| `CARD_EXPIRY` | Expiration date | `MM/YY` | `12/25` |
+| `CARD_CVV` | Security code | `123` | `456` |
 
-### 📱 Configuración de Telegram
-| Variable | Descripción | Cómo Obtener |
-|----------|-------------|--------------|
-| `BOT_TOKEN` | Token del bot de Telegram | 1. Habla con [@BotFather](https://t.me/botfather)<br>2. Ejecuta `/newbot`<br>3. Sigue las instrucciones<br>4. Copia el token |
-| `CHAT_ID` | ID del chat donde recibir notificaciones | **Método con tu propio bot:**<br>1. Escribe cualquier mensaje a tu bot<br>2. Ve a: `https://api.telegram.org/bot<TU_BOT_TOKEN>/getUpdates`<br>3. Busca `"chat":{"id":123456789}`<br>4. Ese número es tu CHAT_ID |
+### 📱 Telegram Configuration
+| Variable | Description | How to Obtain |
+|----------|-------------|---------------|
+| `BOT_TOKEN` | Telegram bot token | 1. Talk to [@BotFather](https://t.me/botfather)<br>2. Execute `/newbot`<br>3. Follow instructions<br>4. Copy the token |
+| `CHAT_ID` | Chat ID where to receive notifications | **Method with your own bot:**<br>1. Send any message to your bot<br>2. Go to: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`<br>3. Look for `"chat":{"id":123456789}`<br>4. That number is your CHAT_ID |
 
-### 🔒 Seguridad de Artifacts
-| Variable | Descripción | Ejemplo |
+### 🔒 Artifact Security
+| Variable | Description | Example |
 |----------|-------------|---------|
-| `ARTIFACT_PASSWORD` | Contraseña para proteger artifacts | `MiPassword456!` |
+| `ARTIFACT_PASSWORD` | Password to protect artifacts | `MyPassword456!` |
 
-## 🤖 Configuración Detallada de Telegram
+## 🤖 Detailed Telegram Configuration
 
-### 1️⃣ Crear el Bot
-1. Habla con [@BotFather](https://t.me/botfather) en Telegram
-2. Envía `/newbot`
-3. Sigue las instrucciones para nombrar tu bot
-4. **Guarda el token** que te proporciona (formato: `123456789:ABCdefGHIjklMNOpqrSTUvwxYZ`)
+### 1️⃣ Create the Bot
+1. Talk to [@BotFather](https://t.me/botfather) on Telegram
+2. Send `/newbot`
+3. Follow instructions to name your bot
+4. **Save the token** provided (format: `123456789:ABCdefGHIjklMNOpqrSTUvwxYZ`)
 
-### 2️⃣ Obtener tu CHAT_ID
-1. **Envía un mensaje** a tu bot recién creado (cualquier texto)
-2. **Abre tu navegador** y ve a:
+### 2️⃣ Get your CHAT_ID
+1. **Send a message** to your newly created bot (any text)
+2. **Open your browser** and go to:
    ```
-   https://api.telegram.org/bot<TU_BOT_TOKEN>/getUpdates
+   https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
    ```
-   > Reemplaza `<TU_BOT_TOKEN>` con el token real de tu bot
-3. **Busca en la respuesta** algo como:
+   > Replace `<YOUR_BOT_TOKEN>` with your bot's actual token
+3. **Look in the response** for something like:
    ```json
    "chat": {
      "id": 123456789,
-     "first_name": "Tu Nombre",
+     "first_name": "Your Name",
      "type": "private"
    }
    ```
-4. **El número del `id`** es tu CHAT_ID (ejemplo: `123456789`)
+4. **The `id` number** is your CHAT_ID (example: `123456789`)
 
-### 3️⃣ Para Grupos (Opcional)
-Si quieres notificaciones en un grupo:
-1. Agrega tu bot al grupo
-2. Envía un mensaje mencionando al bot: `@tu_bot_name test`
-3. Usa la misma URL de getUpdates
-4. El CHAT_ID del grupo será **negativo** (ejemplo: `-987654321`)
+### 3️⃣ For Groups (Optional)
+If you want notifications in a group:
+1. Add your bot to the group
+2. Send a message mentioning the bot: `@your_bot_name test`
+3. Use the same getUpdates URL
+4. The group CHAT_ID will be **negative** (example: `-987654321`)
 
-## 🔔 Notificaciones
+## 🔔 Notifications
 
-El sistema envía notificaciones inteligentes a Telegram con diferentes estados:
+The system sends intelligent notifications to Telegram with different states:
 
 ### ✅ Transacción Exitosa
 ```
@@ -221,22 +226,22 @@ Edita el archivo `holidays.txt` para agregar días festivos:
 
 El workflow diario respetará automáticamente estos días.
 
-## ⏰ Sistema de Horarios Dinámico
+## ⏰ Dynamic Schedule System
 
-El sistema ajusta automáticamente la hora de ejecución según el horario oficial español:
+The system automatically adjusts execution time according to official Spanish time:
 
-### 📅 Horarios por Temporada
-| Temporada | Horario España | Horario UTC | Meses | Cron Expression |
-|-----------|----------------|-------------|--------|-----------------|
-| 🌞 **Verano** | 15:00 CEST | 13:00 UTC | Abril - Octubre | `0 13 * 4-10 *` |
-| ❄️ **Invierno** | 15:00 CET | 14:00 UTC | Noviembre - Marzo | `0 14 * 11-12,1-3 *` |
+### 📅 Schedule by Season
+| Season | Spanish Time | UTC Time | Months | Cron Expression |
+|--------|--------------|----------|--------|-----------------|
+| 🌞 **Summer** | 15:00 CEST | 13:00 UTC | April - October | `0 13 * 4-10 *` |
+| ❄️ **Winter** | 15:00 CET | 14:00 UTC | November - March | `0 14 * 11-12,1-3 *` |
 
-### 🔄 Cambios Automáticos
-- **Cambio a horario de verano**: Último domingo de marzo
-- **Cambio a horario de invierno**: Último domingo de octubre
-- **Ajuste automático**: El workflow se ejecuta siempre a las 15:00 hora local española
+### 🔄 Automatic Changes
+- **Change to summer time**: Last Sunday of March
+- **Change to winter time**: Last Sunday of October
+- **Automatic adjustment**: The workflow always executes at 15:00 Spanish local time
 
-> **Nota**: Los cron jobs de GitHub Actions usan aproximaciones mensuales. Los cambios exactos de horario ocurren en fechas específicas, pero el sistema mantiene consistencia durante cada temporada.
+> **Note**: GitHub Actions cron jobs use monthly approximations. Exact time changes occur on specific dates, but the system maintains consistency during each season.
 
 ## 🔍 Debugging y Artifacts
 
@@ -290,8 +295,6 @@ Si tienes problemas:
 
 <div align="center">
 
-**Hecho con ❤️ para automatizar pagos de forma segura**
-
-[⬆️ Volver arriba](#-automated-payments---casa-ortega)
+[⬆️ Back to top](#-automated-payments---casa-ortega)
 
 </div>
