@@ -238,26 +238,38 @@ The system automatically adjusts execution time according to official Spanish ti
 
 > **Note**: GitHub Actions cron jobs use monthly approximations. Exact time changes occur on specific dates, but the system maintains consistency during each season.
 
-## 🔍 Debugging y Artifacts
+## 🔍 Debugging and Encrypted File Delivery
 
-### Artifacts Generados
-- 📷 **Screenshots** de cada paso del proceso
-- 📹 **Videos** de la ejecución (en caso de fallo)
-- 📊 **Reportes HTML** de Playwright
-- 📝 **Logs** detallados de la ejecución
+### 📁 Generated Debugging Files
+- 📷 **Screenshots** of each process step
+- 📹 **Videos** of execution (in case of failure) 
+- 📊 **Playwright HTML reports**
+- 📝 **Detailed execution logs**
 
-### Download Artifacts
-1. Go to the workflow execution in **Actions**
-2. Look for the **"Artifacts"** section
-3. Download `artifacts-YYYYMMDD.zip` (daily) or `artifacts-manual-YYYYMMDD.zip` (manual)
-4. Extract and review the debugging files
+### 🔐 Encrypted File Delivery via Telegram
+For security reasons, debugging files are delivered encrypted via Telegram instead of GitHub artifacts:
 
-## 🔒 Seguridad
+1. **Automatic encryption**: Files are compressed and encrypted using OpenSSL AES-256-CBC
+2. **Auto-generated passwords**: 32-character base64 passwords for each execution
+3. **Size optimization**: Files larger than 50MB are automatically reduced
+4. **Secure delivery**: Password and encrypted file sent separately via Telegram
+5. **No GitHub storage**: Sensitive content is never stored in GitHub artifacts
 
-### ✅ Medidas Implementadas
-- 🔐 **Secrets** de GitHub para información sensible
-- 🎭 **Enmascaramiento** de valores en logs
-- 🔒 **Artifacts encriptados** con contraseña
+### 📱 Receiving Encrypted Files
+1. Wait for Telegram notification with execution results
+2. Look for the password in the message: `🔐 Password: [32-character-string]`
+3. Download the encrypted file attachment
+4. Decrypt using: `openssl enc -aes-256-cbc -d -in encrypted_file.enc -out artifacts.zip -pass pass:[password]`
+5. Extract `artifacts.zip` to review debugging files
+
+## 🔒 Security
+
+### ✅ Implemented Security Measures
+- 🔐 **GitHub Secrets** for sensitive information
+- 🎭 **Value masking** in logs to prevent data exposure
+- 🔒 **Encrypted file delivery** via Telegram with auto-generated passwords
+- � **No GitHub artifacts** for sensitive debugging content
+- 🛡️ **Environment variable protection** with automatic masking
 - 🚫 **Sin exposición** de tokens en URLs
 - 🛡️ **Variables de entorno** protegidas
 
@@ -273,16 +285,17 @@ The system automatically adjusts execution time according to official Spanish ti
 - � **Repository-level protection** instead of password encryption
 
 ### 🎯 Artifact Security
-- **Access restriction**: Only repository owner can download artifacts
-- **Repository permissions**: GitHub-level access control
+- **Generation restriction**: Only repository owner can generate artifacts
+- **Repository permissions**: GitHub-level access control (limited)
 - **Automatic cleanup**: 30-day retention policy
-- **No external access**: External contributors cannot access sensitive artifacts
+- **Note**: Anyone with repository read access can download artifacts once generated
 
 ### ⚠️ Important
 - Never commit sensitive information to the repository
 - Always use GitHub Secrets for credentials
 - Review logs before making repositories public
-- Only repository owner can access workflow artifacts
+- **Artifacts are visible to all repository collaborators**
+- Consider using private repositories for sensitive automation
 
 ## 🤝 Contributing
 

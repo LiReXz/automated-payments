@@ -45,48 +45,38 @@ jobs:
           echo "=== Test execution summary ==="
           cat test-results/*/test-failed-*.png 2>/dev/null && echo "Screenshots found" || echo "No failure screenshots"
 
-      - name: Create artifacts
+      - name: Create encrypted artifacts for Telegram
         if: always()
         run: |
           if [ -d "test-results" ] || [ -f "*.png" ] || [ -d "playwright-report" ]; then
-            echo "Creating archive with all artifacts..."
-            zip -r artifacts-manual.zip test-results/ *.png playwright-report/ 2>/dev/null || true
-            echo "Archive created successfully"
+            echo "Creating encrypted archive for Telegram delivery..."
+            # Crear archivo encriptado con contraseña fuerte
+            TELEGRAM_PASSWORD=$(openssl rand -base64 32)
+            echo "TELEGRAM_PASSWORD=${TELEGRAM_PASSWORD}" >> $GITHUB_ENV
+            
+            # Comprimir y encriptar archivos sensibles
+            zip -r -P "${TELEGRAM_PASSWORD}" telegram-artifacts.zip test-results/ *.png playwright-report/ 2>/dev/null || true
+            
+            # Verificar que el archivo fue creado y no es demasiado grande (max 50MB para Telegram)
+            if [ -f "telegram-artifacts.zip" ]; then
+              FILE_SIZE=$(stat -c%s "telegram-artifacts.zip" 2>/dev/null || stat -f%z "telegram-artifacts.zip" 2>/dev/null || echo "0")
+              echo "Encrypted file size: ${FILE_SIZE} bytes"
+              if [ "${FILE_SIZE}" -gt 52428800 ]; then
+                echo "File too large for Telegram (>50MB), splitting or reducing..."
+                # Crear versión reducida solo con screenshots y logs críticos
+                zip -r -P "${TELEGRAM_PASSWORD}" telegram-artifacts-reduced.zip test-results/*.png playwright-report/index.html 2>/dev/null || true
+                mv telegram-artifacts-reduced.zip telegram-artifacts.zip 2>/dev/null || true
+              fi
+              echo "TELEGRAM_FILE_READY=true" >> $GITHUB_ENV
+            else
+              echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
+            fi
           else
-            echo "No artifacts to create"
+            echo "No artifacts to encrypt for Telegram"
+            echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
           fi
 
-      - name: Generate timestamp for artifact
-        if: always() && github.event_name != 'pull_request'
-        run: |
-          TIMESTAMP=$(date +%Y%m%d)
-          echo "ARTIFACT_NAME=artifacts-manual-${TIMESTAMP}" >> $GITHUB_ENV
-
-      - name: Check repository permissions
-        if: always()
-        run: |
-          echo "Repository owner: ${{ github.repository_owner }}"
-          echo "Actor: ${{ github.actor }}"
-          echo "Event name: ${{ github.event_name }}"
-          if [ "${{ github.actor }}" != "${{ github.repository_owner }}" ] && [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "Skipping artifact upload for external contributors"
-            echo "SKIP_UPLOAD=true" >> $GITHUB_ENV
-          else
-            echo "SKIP_UPLOAD=false" >> $GITHUB_ENV
-          fi
-
-      - name: Upload artifacts
-        if: always() && env.SKIP_UPLOAD != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: artifacts-manual.zip
-          retention-days: 30
-          if-no-files-found: ignore
-          include-hidden-files: false
-          overwrite: true
-
-      - name: Send Telegram notification
+      - name: Send Telegram notification with encrypted files
         if: always()
         run: |
           # Analizar el resultado de la transacción, no solo del workflow
@@ -114,17 +104,38 @@ jobs:
             echo "No se encontraron patrones reconocidos"
           fi
           
+          # Preparar mensaje base
           FULL_MESSAGE="🏦 *Automated Payments - MANUAL*
           
           $STATUS: $MESSAGE
           
           Fecha: $(date '+%d/%m/%Y %H:%M')
           Ver detalles: https://github.com/LiReXz/automated-payments/actions/runs/${{ github.run_id }}"
+          
+          # Agregar información de archivos si están disponibles
+          if [ "$TELEGRAM_FILE_READY" = "true" ]; then
+            FULL_MESSAGE="${FULL_MESSAGE}
+            
+          🔒 *Archivos encriptados adjuntos*
+          Contraseña: \`${TELEGRAM_PASSWORD}\`
+          
+          ⚠️ *Información sensible protegida*"
+          fi
 
+          # Enviar mensaje de texto
           curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
             -d chat_id="${CHAT_ID}" \
             -d text="$FULL_MESSAGE" \
             -d parse_mode="Markdown"
+          
+          # Enviar archivo encriptado si está disponible
+          if [ "$TELEGRAM_FILE_READY" = "true" ] && [ -f "telegram-artifacts.zip" ]; then
+            echo "Enviando archivo encriptado por Telegram..."
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+              -F chat_id="${CHAT_ID}" \
+              -F document=@telegram-artifacts.zip \
+              -F caption="🔐 Archivos de debugging encriptados - Contraseña en mensaje anterior"
+          fi
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
