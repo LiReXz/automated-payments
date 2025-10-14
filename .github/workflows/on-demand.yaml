@@ -1,11 +1,10 @@
-name: Daily Execution
+name: On-Demand Execution
 
 on:
-  schedule:
-    - cron: '30 15 * * *'
+  workflow_dispatch:
 
 jobs:
-  run-daily:
+  run-on-demand:
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -14,24 +13,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Skip weekends and holidays
-        run: |
-          DAY_OF_WEEK=$(date +%u)
-          TODAY=$(date +"%d/%m")
-          echo "Today is $TODAY (Day $DAY_OF_WEEK)"
-
-          if [ "$DAY_OF_WEEK" -ge 6 ]; then
-            echo "Weekend detected. Exiting workflow."
-            exit 0
-          fi
-
-          if [ -f holidays.txt ] && grep -q "^$TODAY$" holidays.txt; then
-            echo "Holiday detected. Exiting workflow."
-            exit 0
-          fi
-
-          echo "Not a weekend or holiday. Workflow continues."
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -69,21 +50,21 @@ jobs:
           cat test-results/*/test-failed-*.png 2>/dev/null && echo "Screenshots found" || echo "No failure screenshots"
 
       - name: Create password-protected artifacts
-        if: always() && github.event_name != 'pull_request'
+        if: always()
         run: |
           if [ -d "test-results" ] || [ -f "*.png" ] || [ -d "playwright-report" ]; then
             echo "Creating password-protected archive..."
-            zip -r -P "${{ secrets.ARTIFACT_PASSWORD }}" protected-artifacts.zip test-results/ *.png playwright-report/ 2>/dev/null || true
+            zip -r -P "${{ secrets.ARTIFACT_PASSWORD }}" protected-artifacts-manual.zip test-results/ *.png playwright-report/ 2>/dev/null || true
             echo "Archive created successfully"
           else
             echo "No artifacts to protect"
           fi
 
       - name: Upload test results and screenshots
-        if: always() && github.event_name != 'pull_request'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ github.run_number }}
+          name: test-results-manual-${{ github.run_number }}
           path: |
             test-results/
             *.png
@@ -94,19 +75,19 @@ jobs:
           include-hidden-files: false
 
       - name: Upload password-protected artifacts
-        if: always() && github.event_name != 'pull_request'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: protected-artifacts-${{ github.run_number }}
-          path: protected-artifacts.zip
+          name: protected-artifacts-manual-${{ github.run_number }}
+          path: protected-artifacts-manual.zip
           retention-days: 30
           if-no-files-found: ignore
 
       - name: Upload Playwright report
-        if: always() && github.event_name != 'pull_request'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-manual
           path: playwright-report
           retention-days: 7
           compression-level: 9
@@ -117,13 +98,13 @@ jobs:
         run: |
           if [ "${{ job.status }}" == "success" ]; then
             STATUS="✅ ÉXITO"
-            MESSAGE="🎉 El depósito automático de Casa Ortega se ejecutó correctamente!"
+            MESSAGE="🎉 El depósito automático de Casa Ortega (MANUAL) se ejecutó correctamente!"
           else
             STATUS="❌ FALLO"
-            MESSAGE="⚠️ El depósito automático de Casa Ortega falló. Revisa los logs para más detalles."
+            MESSAGE="⚠️ El depósito automático de Casa Ortega (MANUAL) falló. Revisa los logs para más detalles."
           fi
           
-          FULL_MESSAGE="🏦 *Automated Payments*
+          FULL_MESSAGE="🏦 *Automated Payments - MANUAL*
           
 $STATUS: $MESSAGE
 
