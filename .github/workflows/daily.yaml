@@ -46,7 +46,7 @@ jobs:
 
       - name: Run Playwright script
         run: |
-          npx playwright test --project=chromium --reporter=html,list --output-dir=test-results || true
+          npx playwright test --project=chromium --reporter=html,list || true
           echo "Test execution completed, checking results..."
           ls -la test-results/ || echo "No test-results directory found"
           ls -la playwright-report/ || echo "No playwright-report directory found"
