@@ -2,7 +2,7 @@ name: Daily Execution
 
 on:
   schedule:
-    - cron: '30 15 * * *'
+    - cron: '30 14 * * *'
 
 jobs:
   run-daily:
@@ -68,45 +68,21 @@ jobs:
         if: always() && github.event_name != 'pull_request'
         run: |
           if [ -d "test-results" ] || [ -f "*.png" ] || [ -d "playwright-report" ]; then
-            echo "Creating password-protected archive..."
+            echo "Creating password-protected archive with all artifacts..."
             zip -r -P "${{ secrets.ARTIFACT_PASSWORD }}" protected-artifacts.zip test-results/ *.png playwright-report/ 2>/dev/null || true
             echo "Archive created successfully"
           else
             echo "No artifacts to protect"
           fi
 
-      - name: Upload test results and screenshots
-        if: always() && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ github.run_number }}
-          path: |
-            test-results/
-            *.png
-            playwright-report/
-          retention-days: 7
-          if-no-files-found: ignore
-          compression-level: 9
-          include-hidden-files: false
-
       - name: Upload password-protected artifacts
         if: always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: protected-artifacts-${{ github.run_number }}
+          name: protected-artifacts-$(date +%Y%m%d-%H%M)
           path: protected-artifacts.zip
           retention-days: 30
           if-no-files-found: ignore
-
-      - name: Upload Playwright report
-        if: always() && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report
-          retention-days: 7
-          compression-level: 9
-          include-hidden-files: false
 
       - name: Send Telegram notification
         if: always()
