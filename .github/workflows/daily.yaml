@@ -67,34 +67,46 @@ jobs:
           echo "=== Test execution summary ==="
           cat test-results/*/test-failed-*.png 2>/dev/null && echo "Screenshots found" || echo "No failure screenshots"
 
-      - name: Create password-protected artifacts
+      - name: Create artifacts
         if: always() && github.event_name != 'pull_request'
         run: |
           if [ -d "test-results" ] || [ -f "*.png" ] || [ -d "playwright-report" ]; then
-            echo "Creating password-protected archive with all artifacts..."
-            # Use environment variable to avoid exposing password in logs
-            export ZIP_PASSWORD="${{ secrets.ARTIFACT_PASSWORD }}"
-            zip -r -P "$ZIP_PASSWORD" protected-artifacts.zip test-results/ *.png playwright-report/ 2>/dev/null || true
-            unset ZIP_PASSWORD
+            echo "Creating archive with all artifacts..."
+            zip -r artifacts.zip test-results/ *.png playwright-report/ 2>/dev/null || true
             echo "Archive created successfully"
           else
-            echo "No artifacts to protect"
+            echo "No artifacts to create"
           fi
 
       - name: Generate timestamp for artifact
         if: always() && github.event_name != 'pull_request'
         run: |
           TIMESTAMP=$(date +%Y%m%d)
-          echo "ARTIFACT_NAME=protected-artifacts-${TIMESTAMP}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=artifacts-${TIMESTAMP}" >> $GITHUB_ENV
 
-      - name: Upload password-protected artifacts
+      - name: Check repository permissions
         if: always() && github.event_name != 'pull_request'
+        run: |
+          echo "Repository owner: ${{ github.repository_owner }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Event name: ${{ github.event_name }}"
+          if [ "${{ github.actor }}" != "${{ github.repository_owner }}" ] && [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "Skipping artifact upload for external contributors"
+            echo "SKIP_UPLOAD=true" >> $GITHUB_ENV
+          else
+            echo "SKIP_UPLOAD=false" >> $GITHUB_ENV
+          fi
+
+      - name: Upload artifacts
+        if: always() && github.event_name != 'pull_request' && env.SKIP_UPLOAD != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
-          path: protected-artifacts.zip
+          path: artifacts.zip
           retention-days: 30
           if-no-files-found: ignore
+          include-hidden-files: false
+          overwrite: true
 
       - name: Send Telegram notification
         if: always()

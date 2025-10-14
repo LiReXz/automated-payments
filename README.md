@@ -97,11 +97,6 @@ Configure the following variables in **GitHub Secrets** (`Settings > Secrets and
 | `BOT_TOKEN` | Telegram bot token | 1. Talk to [@BotFather](https://t.me/botfather)<br>2. Execute `/newbot`<br>3. Follow instructions<br>4. Copy the token |
 | `CHAT_ID` | Chat ID where to receive notifications | **Method with your own bot:**<br>1. Send any message to your bot<br>2. Go to: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`<br>3. Look for `"chat":{"id":123456789}`<br>4. That number is your CHAT_ID |
 
-### 🔒 Artifact Security
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `ARTIFACT_PASSWORD` | Password to protect artifacts | `MyPassword456!` |
-
 ## 🤖 Detailed Telegram Configuration
 
 ### 1️⃣ Create the Bot
@@ -251,11 +246,11 @@ The system automatically adjusts execution time according to official Spanish ti
 - 📊 **Reportes HTML** de Playwright
 - 📝 **Logs** detallados de la ejecución
 
-### Descargar Artifacts
-1. Ve a la ejecución del workflow en **Actions**
-2. Busca la sección **"Artifacts"**
-3. Descarga `protected-artifacts-YYYYMMDD.zip`
-4. Descomprime usando la contraseña configurada en `ARTIFACT_PASSWORD`
+### Download Artifacts
+1. Go to the workflow execution in **Actions**
+2. Look for the **"Artifacts"** section
+3. Download `artifacts-YYYYMMDD.zip` (daily) or `artifacts-manual-YYYYMMDD.zip` (manual)
+4. Extract and review the debugging files
 
 ## 🔒 Seguridad
 
@@ -267,29 +262,47 @@ The system automatically adjusts execution time according to official Spanish ti
 - 🛡️ **Variables de entorno** protegidas
 
 ### ⚠️ Importante
-- Nunca commits información sensible al repositorio
-- Usa siempre GitHub Secrets para credenciales
-- Revisa logs antes de hacer públicos los repositories
+## 🔒 Security
 
-## 🤝 Contribuir
+### ✅ Implemented Measures
+- 🔐 **GitHub Secrets** for sensitive information
+- 🎭 **Value masking** in logs
+-  **No token exposure** in URLs
+- 🛡️ **Protected environment variables**
+- 👤 **Repository owner-only** artifact access
+- � **Repository-level protection** instead of password encryption
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/amazing-feature`)
-3. Commit tus cambios (`git commit -m 'Add amazing feature'`)
-4. Push a la rama (`git push origin feature/amazing-feature`)
-5. Abre un Pull Request
+### 🎯 Artifact Security
+- **Access restriction**: Only repository owner can download artifacts
+- **Repository permissions**: GitHub-level access control
+- **Automatic cleanup**: 30-day retention policy
+- **No external access**: External contributors cannot access sensitive artifacts
 
-## 📜 Licencia
+### ⚠️ Important
+- Never commit sensitive information to the repository
+- Always use GitHub Secrets for credentials
+- Review logs before making repositories public
+- Only repository owner can access workflow artifacts
 
-Este proyecto es para uso personal y educativo. Úsalo de manera responsable.
+## 🤝 Contributing
 
-## 🆘 Soporte
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-Si tienes problemas:
-1. 📋 Revisa los logs en GitHub Actions
-2. 📥 Descarga los artifacts para más detalles
-3. 🔍 Verifica que todas las variables estén configuradas
-4. 📱 Confirma que el bot de Telegram funcione
+## 📜 License
+
+This project is for personal and educational use. Use it responsibly.
+
+## 🆘 Support
+
+If you have problems:
+1. 📋 Review the logs in GitHub Actions
+2. 📥 Download the artifacts for more details
+3. 🔍 Verify that all variables are configured
+4. 📱 Confirm that the Telegram bot works
 
 ---
 
