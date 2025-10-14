@@ -75,11 +75,17 @@ jobs:
             echo "No artifacts to protect"
           fi
 
+      - name: Generate timestamp for artifact
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M)
+          echo "ARTIFACT_NAME=protected-artifacts-${TIMESTAMP}" >> $GITHUB_ENV
+
       - name: Upload password-protected artifacts
         if: always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: protected-artifacts-$(date +%Y%m%d-%H%M)
+          name: ${{ env.ARTIFACT_NAME }}
           path: protected-artifacts.zip
           retention-days: 30
           if-no-files-found: ignore
@@ -88,7 +94,7 @@ jobs:
         if: always()
         run: |
           # Analizar el resultado de la transacción, no solo del workflow
-          if grep -q "Transaction successful\|Payment completed\|Pago exitoso\|Depósito realizado" test-results/*/test-results.xml test-results/*/*.log playwright-report/index.html 2>/dev/null; then
+          if grep -q "Transaction successful\|Payment completed\|Pago exitoso\|Depósito realizado\|realizado correctamente\|Continuar" test-results/*/test-results.xml test-results/*/*.log playwright-report/index.html 2>/dev/null; then
             STATUS="✅ ÉXITO"
             MESSAGE="🎉 El depósito automático de Casa Ortega se realizó correctamente!"
           elif grep -q "Transaction denied\|Payment failed\|denegad\|falló\|rechazad" test-results/*/test-results.xml test-results/*/*.log playwright-report/index.html 2>/dev/null; then
