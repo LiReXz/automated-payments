@@ -105,7 +105,9 @@ test('Deposit funds in Casa Ortega virtual wallet', async ({ page }) => {
     const id = await field.getAttribute('id');
     const type = await field.getAttribute('type');
     
-    console.log(`Required field ${i + 1}: visible=${isVisible}, value="${value}", placeholder="${placeholder}", name="${name}", id="${id}", type="${type}"`);
+    // Mask sensitive values to avoid logging them
+    const maskedValue = value ? (value.length > 0 ? '*'.repeat(value.length) : '') : '';
+    console.log(`Required field ${i + 1}: visible=${isVisible}, value="${maskedValue}", placeholder="${placeholder}", name="${name}", id="${id}", type="${type}"`);
     
     // If it's a visible required field without a value, try to fill it
     if (isVisible && !value && type === 'text') {
@@ -237,7 +239,8 @@ test('Deposit funds in Casa Ortega virtual wallet', async ({ page }) => {
       const inputs = document.querySelectorAll('input');
       inputs.forEach((input, index) => {
         const element = input as HTMLInputElement;
-        console.log(`Input ${index}: type=${element.type}, name=${element.name}, value="${element.value}", required=${element.required}, placeholder="${element.placeholder}"`);
+        const maskedValue = element.value ? (element.value.length > 0 ? '*'.repeat(element.value.length) : '') : '';
+        console.log(`Input ${index}: type=${element.type}, name=${element.name}, value="${maskedValue}", required=${element.required}, placeholder="${element.placeholder}"`);
       });
     });
     
