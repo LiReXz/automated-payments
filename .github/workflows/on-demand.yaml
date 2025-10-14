@@ -6,10 +6,6 @@ on:
 jobs:
   run-on-demand:
     runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
