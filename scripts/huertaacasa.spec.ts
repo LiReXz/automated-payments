@@ -12,7 +12,7 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   // Depositar fondos
   await page.getByRole('spinbutton', { name: 'Depositar fondos' }).click();
   await page.getByRole('spinbutton', { name: 'Depositar fondos' }).fill('10');
-  await page.getByRole('button', { name: 'Añadir fondos' }).click();
+  await page.getByText('Depositar fondos € Añadir').click();
   await page.getByRole('button', { name: 'Añadir fondos' }).click();
   
   // Realizar pedido
@@ -21,7 +21,9 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   
   // Rellenar datos de tarjeta
   await page.getByPlaceholder('Número de tarjeta').fill(process.env.CARD_NUMBER || '');
+  await page.getByPlaceholder('Caducidad').click();
   await page.getByPlaceholder('Caducidad').fill(process.env.CARD_EXPIRY || '');
+  await page.getByPlaceholder('CVV').click();
   await page.getByPlaceholder('CVV').fill(process.env.CARD_CVV || '');
   await page.getByRole('button', { name: 'Pagar', exact: true }).click();
   
