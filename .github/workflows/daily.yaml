@@ -1,381 +1,186 @@
-name: Daily Automated Paymentsname: Daily Execution
+﻿name: Daily Automated Payments
 
+on:
+  schedule:
+    - cron: '0 13 * 4-10 1-5'
+    - cron: '0 14 * 11-12,1-3 1-5'
+  workflow_dispatch:
 
+env:
+  TZ: Europe/Madrid
 
-on:on:
-
-  schedule:  schedule:
-
-    # 🕐 Runs at 15:00 Spain time (ESP = UTC+1 in winter, UTC+2 in summer)    # Verano (CEST UTC+2): 15:00 ESP = 13:00 UTC
-
-    # Winter (CET): 14:00 UTC → 15:00 ESP    - cron: '0 13 * 4-10 *'  # Abril a Octubre
-
-    # Summer (CEST): 13:00 UTC → 15:00 ESP    # Invierno (CET UTC+1): 15:00 ESP = 14:00 UTC  
-
-    # Cron uses UTC so we need 13:00 UTC to cover summer time    - cron: '0 14 * 11-12,1-3 *'  # Noviembre a Marzo
-
-    - cron: '0 13 * * 1-5' # Monday to Friday at 13:00 UTC
-
-  workflow_dispatch: # Allow manual executionjobs:
-
+jobs:
   run-daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
-env:    runs-on: ubuntu-latest
-
-  TZ: Europe/Madrid    steps:
-
+    steps:
       - name: Checkout repository
+        uses: actions/checkout@v4
 
-jobs:        uses: actions/checkout@v4
-
-  automated-payments:
-
-    runs-on: ubuntu-latest      - name: Skip weekends and holidays
-
-    timeout-minutes: 15        id: check_schedule
-
+      - name: Skip weekends and holidays
+        id: check_schedule
         run: |
-
-    steps:          DAY_OF_WEEK=$(date +%u)
-
-      - name: 📥 Checkout repository          TODAY=$(date +"%d/%m")
-
-        uses: actions/checkout@v4          echo "Today is $TODAY (Day $DAY_OF_WEEK)"
-
-
-
-      - name: 📅 Check if today is a holiday or weekend          if [ "$DAY_OF_WEEK" -ge 6 ]; then
-
-        id: check_schedule            echo "Weekend detected. Skipping workflow."
-
-        run: |            echo "should_run=false" >> $GITHUB_OUTPUT
-
-          # Get current day of week (1=Monday, 7=Sunday)            exit 0
-
-          DAY_OF_WEEK=$(date +%u)          fi
-
+          DAY_OF_WEEK=$(date +%u)
+          TODAY=$(date +"%d/%m")
+          echo "Today is $TODAY (Day $DAY_OF_WEEK)"
           
-
-          # Get current date in DD/MM format          if [ -f holidays.txt ] && grep -q "^$TODAY$" holidays.txt; then
-
-          CURRENT_DATE=$(date +%d/%m)            echo "Holiday detected. Skipping workflow."
-
-                      echo "should_run=false" >> $GITHUB_OUTPUT
-
-          echo "Day of week: $DAY_OF_WEEK"            exit 0
-
-          echo "Current date: $CURRENT_DATE"          fi
-
+          if [ "$DAY_OF_WEEK" -ge 6 ]; then
+            echo "Weekend detected. Skipping workflow."
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           
+          if [ -f holidays.txt ] && grep -q "^$TODAY$" holidays.txt; then
+            echo "Holiday detected. Skipping workflow."
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "Not a weekend or holiday. Workflow continues."
+          echo "should_run=true" >> $GITHUB_OUTPUT
 
-          # Check if it's weekend          echo "Not a weekend or holiday. Workflow continues."
-
-          if [ "$DAY_OF_WEEK" -eq 6 ] || [ "$DAY_OF_WEEK" -eq 7 ]; then          echo "should_run=true" >> $GITHUB_OUTPUT
-
-            echo "⏭️ Skipping: Today is weekend (day $DAY_OF_WEEK)"
-
-            echo "should_run=false" >> $GITHUB_OUTPUT      - name: Setup Node.js
-
-            exit 0        if: steps.check_schedule.outputs.should_run == 'true'
-
-          fi        uses: actions/setup-node@v4
-
-                  with:
-
-          # Check if today is a Spanish holiday          node-version: 18
-
-          if grep -q "^$CURRENT_DATE$" holidays.txt; then
-
-            echo "⏭️ Skipping: Today ($CURRENT_DATE) is a Spanish holiday"      - name: Install dependencies
-
-            echo "should_run=false" >> $GITHUB_OUTPUT        if: steps.check_schedule.outputs.should_run == 'true'
-
-            exit 0        run: |
-
-          fi          npm ci
-
-                    npx playwright install --with-deps
-
-          echo "✅ Proceeding: Today is a working day"
-
-          echo "should_run=true" >> $GITHUB_OUTPUT      - name: Run Playwright script
-
+      - name: Setup Node.js
         if: steps.check_schedule.outputs.should_run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-      - name: 🔧 Setup Node.js        run: |
-
-        if: steps.check_schedule.outputs.should_run == 'true'          npx playwright test scripts/casaortega.spec.ts --project=chromium --reporter=html,list || true
-
-        uses: actions/setup-node@v4          echo "Test execution completed, checking results..."
-
-        with:          ls -la test-results/ || echo "No test-results directory found"
-
-          node-version: '18'          ls -la playwright-report/ || echo "No playwright-report directory found"
-
-        env:
-
-      - name: 📦 Install dependencies          USER_EMAIL: ${{ secrets.USER_EMAIL }}
-
-        if: steps.check_schedule.outputs.should_run == 'true'          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
-
-        run: npm ci          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}
-
-          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
-
-      - name: 🎭 Install Playwright browsers          CARD_CVV: ${{ secrets.CARD_CVV }}
-
+      - name: Install dependencies
         if: steps.check_schedule.outputs.should_run == 'true'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
 
-        run: npx playwright install chromium      - name: Show test output for debugging
-
-        if: always() && steps.check_schedule.outputs.should_run == 'true'
-
-      - name: 📖 Read script configuration        run: |
-
-        if: steps.check_schedule.outputs.should_run == 'true'          echo "=== Checking for screenshots and debug files ==="
-
-        id: read_config          ls -la *.png || echo "No PNG files found in root"
-
-        run: |          echo "=== Checking test-results directory ==="
-
-          CONFIG=$(cat choose-script.json)          find test-results -name "*.png" -o -name "*.webm" -o -name "*.md" 2>/dev/null || echo "No test-results directory or files"
-
-          echo "Configuration loaded:"          echo "=== Checking for HTML report ==="
-
-          echo "$CONFIG"          find playwright-report -name "*.html" 2>/dev/null || echo "No HTML report found"
-
-                    echo "=== Test execution summary ==="
-
-          # Extract enabled scripts          cat test-results/*/test-failed-*.png 2>/dev/null && echo "Screenshots found" || echo "No failure screenshots"
-
+      - name: Read script configuration
+        if: steps.check_schedule.outputs.should_run == 'true'
+        id: read_config
+        run: |
+          CONFIG=$(cat choose-script.json)
+          echo "Configuration loaded:"
+          echo "$CONFIG"
+          
           CASAORTEGA_ENABLED=$(echo "$CONFIG" | jq -r '.scripts.casaortega.enabled')
+          CASAORTEGA_PATH=$(echo "$CONFIG" | jq -r '.scripts.casaortega.path')
+          CASAORTEGA_NAME=$(echo "$CONFIG" | jq -r '.scripts.casaortega.name')
+          
+          HUERTAACASA_ENABLED=$(echo "$CONFIG" | jq -r '.scripts.huertaacasa.enabled')
+          HUERTAACASA_PATH=$(echo "$CONFIG" | jq -r '.scripts.huertaacasa.path')
+          HUERTAACASA_NAME=$(echo "$CONFIG" | jq -r '.scripts.huertaacasa.name')
+          
+          echo "casaortega_enabled=$CASAORTEGA_ENABLED" >> $GITHUB_OUTPUT
+          echo "casaortega_path=$CASAORTEGA_PATH" >> $GITHUB_OUTPUT
+          echo "casaortega_name=$CASAORTEGA_NAME" >> $GITHUB_OUTPUT
+          
+          echo "huertaacasa_enabled=$HUERTAACASA_ENABLED" >> $GITHUB_OUTPUT
+          echo "huertaacasa_path=$HUERTAACASA_PATH" >> $GITHUB_OUTPUT
+          echo "huertaacasa_name=$HUERTAACASA_NAME" >> $GITHUB_OUTPUT
 
-          CASAORTEGA_PATH=$(echo "$CONFIG" | jq -r '.scripts.casaortega.path')      - name: Create artifacts for Telegram (Errors Only)
+      - name: Run Casa Ortega script
+        if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.casaortega_enabled == 'true'
+        env:
+          USER_EMAIL: ${{ secrets.USER_EMAIL }}
+          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
+          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}
+          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
+          CARD_CVV: ${{ secrets.CARD_CVV }}
+        run: |
+          echo " Running Casa Ortega payment script..."
+          npx playwright test ${{ steps.read_config.outputs.casaortega_path }} --project=chromium || exit_code=$?
+          echo "CASAORTEGA_EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
+          exit 0
 
-          CASAORTEGA_NAME=$(echo "$CONFIG" | jq -r '.scripts.casaortega.name')        if: always() && steps.check_schedule.outputs.should_run == 'true' && github.event_name != 'pull_request'
+      - name: Run Huerta a Casa script
+        if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.huertaacasa_enabled == 'true'
+        env:
+          USER_EMAIL: ${{ secrets.USER_EMAIL }}
+          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
+          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}
+          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
+          CARD_CVV: ${{ secrets.CARD_CVV }}
+        run: |
+          echo " Running Huerta a Casa payment script..."
+          npx playwright test ${{ steps.read_config.outputs.huertaacasa_path }} --project=chromium || exit_code=$?
+          echo "HUERTAACASA_EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
+          exit 0
 
-                  run: |
-
-          HUERTAACASA_ENABLED=$(echo "$CONFIG" | jq -r '.scripts.huertaacasa.enabled')          # Analizar el resultado ANTES de crear archivos
-
-          HUERTAACASA_PATH=$(echo "$CONFIG" | jq -r '.scripts.huertaacasa.path')          echo "=== Analizando resultados para determinar si crear archivos ==="
-
-          HUERTAACASA_NAME=$(echo "$CONFIG" | jq -r '.scripts.huertaacasa.name')          
-
-                    # Buscar indicadores de éxito o denegación (NO necesitan archivos de debugging)
-
-          echo "casaortega_enabled=$CASAORTEGA_ENABLED" >> $GITHUB_OUTPUT          if grep -qir "Transacción denegada\." test-results/ playwright-report/ 2>/dev/null; then
-
-          echo "casaortega_path=$CASAORTEGA_PATH" >> $GITHUB_OUTPUT            echo "Transacción denegada detectada - NO se enviarán archivos (no es error técnico)"
-
-          echo "casaortega_name=$CASAORTEGA_NAME" >> $GITHUB_OUTPUT            echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
-
-                      echo "STATUS=❌ TRANSACCIÓN DENEGADA" >> $GITHUB_ENV
-
-          echo "huertaacasa_enabled=$HUERTAACASA_ENABLED" >> $GITHUB_OUTPUT          elif grep -qi "OPERACIÓN AUTORIZADA CON CÓDIGO:" test-results/ playwright-report/ 2>/dev/null; then
-
-          echo "huertaacasa_path=$HUERTAACASA_PATH" >> $GITHUB_OUTPUT            echo "Transacción exitosa detectada - NO se enviarán archivos (funcionamiento normal)"
-
-          echo "huertaacasa_name=$HUERTAACASA_NAME" >> $GITHUB_OUTPUT            echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
-
-            echo "STATUS=✅ ÉXITO" >> $GITHUB_ENV
-
-      - name: 🏦 Run Casa Ortega script          # Solo crear archivos para errores técnicos o estados desconocidos (problemas del workflow)
-
-        if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.casaortega_enabled == 'true'          else
-
-        env:            echo "Error técnico o estado desconocido - SÍ se enviarán archivos para debugging técnico"
-
-          USER_EMAIL: ${{ secrets.USER_EMAIL }}            if [ "${{ job.status }}" == "failure" ]; then
-
-          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}              echo "STATUS=❌ ERROR TÉCNICO" >> $GITHUB_ENV
-
-          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}            else
-
-          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}              echo "STATUS=⚠️ ESTADO DESCONOCIDO" >> $GITHUB_ENV
-
-          CARD_CVV: ${{ secrets.CARD_CVV }}            fi
-
-        run: |            
-
-          echo "🏦 Running Casa Ortega payment script..."            if [ -d "test-results" ] || [ -f "*.png" ] || [ -d "playwright-report" ]; then
-
-          npx playwright test ${{ steps.read_config.outputs.casaortega_path }} || exit_code=$?              echo "Creando archivo ZIP para debugging..."
-
-          echo "CASAORTEGA_EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV              zip -r telegram-artifacts.zip test-results/ *.png playwright-report/ 2>/dev/null || true
-
-          exit 0              
-
-              if [ -f "telegram-artifacts.zip" ]; then
-
-      - name: 🌱 Run Huerta a Casa script                FILE_SIZE=$(stat -c%s "telegram-artifacts.zip" 2>/dev/null || stat -f%z "telegram-artifacts.zip" 2>/dev/null || echo "0")
-
-        if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.huertaacasa_enabled == 'true'                echo "Archivo ZIP creado: ${FILE_SIZE} bytes"
-
-        env:                if [ "${FILE_SIZE}" -gt 52428800 ]; then
-
-          USER_EMAIL: ${{ secrets.USER_EMAIL }}                  echo "Archivo muy grande (>50MB), creando versión reducida..."
-
-          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}                  zip -r telegram-artifacts-reduced.zip test-results/*.png playwright-report/index.html 2>/dev/null || true
-
-          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}                  mv telegram-artifacts-reduced.zip telegram-artifacts.zip 2>/dev/null || true
-
-          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}                fi
-
-          CARD_CVV: ${{ secrets.CARD_CVV }}                echo "TELEGRAM_FILE_READY=true" >> $GITHUB_ENV
-
-        run: |              else
-
-          echo "🌱 Running Huerta a Casa payment script..."                echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
-
-          npx playwright test ${{ steps.read_config.outputs.huertaacasa_path }} || exit_code=$?              fi
-
-          echo "HUERTAACASA_EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV            else
-
-          exit 0              echo "No hay archivos de debugging disponibles"
-
-              echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
-
-      - name: 📊 Analyze Casa Ortega results            fi
-
-        if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.casaortega_enabled == 'true'          fi
-
+      - name: Analyze Casa Ortega results
+        if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.casaortega_enabled == 'true'
         id: analyze_casaortega
-
-        run: |      - name: Send Telegram notification with files (errors only)
-
-          if [ "${CASAORTEGA_EXIT_CODE}" -eq 0 ]; then        if: always() && steps.check_schedule.outputs.should_run == 'true'
-
-            if grep -q "OPERACIÓN AUTORIZADA CON CÓDIGO:" playwright-report/index.html 2>/dev/null || \        run: |
-
-               grep -q "Pago realizado correctamente" test-results/**/*.txt 2>/dev/null; then          # Usar el estado ya determinado en el paso anterior
-
-              echo "status=✅ SUCCESS" >> $GITHUB_OUTPUT          case "$STATUS" in
-
-              echo "message=Transaction completed successfully" >> $GITHUB_OUTPUT            "✅ ÉXITO")
-
-              echo "should_send_files=false" >> $GITHUB_OUTPUT              MESSAGE="🎉 El depósito automático de Casa Ortega se realizó correctamente!"
-
-            else              ;;
-
-              echo "status=❓ UNKNOWN" >> $GITHUB_OUTPUT            "❌ TRANSACCIÓN DENEGADA")
-
-              echo "message=Test passed but no success confirmation found" >> $GITHUB_OUTPUT              MESSAGE="💳 La transacción fue denegada por el procesador de pagos."
-
-              echo "should_send_files=true" >> $GITHUB_OUTPUT              ;;
-
-            fi            "❌ ERROR TÉCNICO")
-
-          else              MESSAGE="⚠️ Error técnico en la ejecución del workflow. Revisa los logs."
-
-            if grep -q "Transacción denegada." test-results/**/*.txt 2>/dev/null || \              ;;
-
-               grep -q "Payment was denied" test-results/**/*.txt 2>/dev/null; then            "⚠️ ESTADO DESCONOCIDO")
-
-              echo "status=❌ DENIED" >> $GITHUB_OUTPUT              MESSAGE="🔍 No se pudo determinar el resultado de la transacción. Revisa el reporte."
-
-              echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT              ;;
-
-              echo "should_send_files=false" >> $GITHUB_OUTPUT            *)
-
-            else              STATUS="⚠️ ESTADO DESCONOCIDO"
-
-              echo "status=💥 ERROR" >> $GITHUB_OUTPUT              MESSAGE="🔍 No se pudo determinar el resultado de la transacción. Revisa el reporte."
-
-              echo "message=Technical error occurred during execution" >> $GITHUB_OUTPUT              ;;
-
-              echo "should_send_files=true" >> $GITHUB_OUTPUT          esac
-
-            fi          
-
-          fi          # Preparar mensaje base
-
-          FULL_MESSAGE="🏦 *CASA ORTEGA - DAILY*
-
-      - name: 📊 Analyze Huerta a Casa results          
-
-        if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.huertaacasa_enabled == 'true'          $STATUS: $MESSAGE
-
-        id: analyze_huertaacasa          
-
-        run: |          Fecha: $(date '+%d/%m/%Y %H:%M')
-
-          if [ "${HUERTAACASA_EXIT_CODE}" -eq 0 ]; then          Ver detalles: https://github.com/LiReXz/automated-payments/actions/runs/${{ github.run_id }}"
-
-            if grep -q "OPERACIÓN AUTORIZADA CON CÓDIGO:" playwright-report/index.html 2>/dev/null || \          
-
-               grep -q "Pago realizado correctamente" test-results/**/*.txt 2>/dev/null; then          # Solo agregar información de archivos si es error técnico o desconocido
-
-              echo "status=✅ SUCCESS" >> $GITHUB_OUTPUT          if [ "$TELEGRAM_FILE_READY" = "true" ]; then
-
-              echo "message=Transaction completed successfully" >> $GITHUB_OUTPUT            FULL_MESSAGE="${FULL_MESSAGE}
-
-              echo "should_send_files=false" >> $GITHUB_OUTPUT            
-
-            else          � *Archivos de debugging adjuntos*
-
-              echo "status=❓ UNKNOWN" >> $GITHUB_OUTPUT          ⚠️ *Solo se envían archivos en casos de error para debugging*"
-
-              echo "message=Test passed but no success confirmation found" >> $GITHUB_OUTPUT          fi
-
+        run: |
+          if [ "${CASAORTEGA_EXIT_CODE}" -eq 0 ]; then
+            if grep -qir "OPERACIÓN AUTORIZADA CON CÓDIGO:" test-results/ playwright-report/ 2>/dev/null; then
+              echo "status= SUCCESS" >> $GITHUB_OUTPUT
+              echo "message=Transaction completed successfully" >> $GITHUB_OUTPUT
+              echo "should_send_files=false" >> $GITHUB_OUTPUT
+            else
+              echo "status= UNKNOWN" >> $GITHUB_OUTPUT
+              echo "message=Test passed but no success confirmation found" >> $GITHUB_OUTPUT
               echo "should_send_files=true" >> $GITHUB_OUTPUT
-
-            fi          # Enviar mensaje de texto
-
-          else          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-
-            if grep -q "Transacción denegada." test-results/**/*.txt 2>/dev/null || \            -d chat_id="${CHAT_ID}" \
-
-               grep -q "Payment was denied" test-results/**/*.txt 2>/dev/null; then            -d text="$FULL_MESSAGE" \
-
-              echo "status=❌ DENIED" >> $GITHUB_OUTPUT            -d parse_mode="Markdown"
-
-              echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT          
-
-              echo "should_send_files=false" >> $GITHUB_OUTPUT          # Enviar archivo solo si hay error técnico o estado desconocido
-
-            else          if [ "$TELEGRAM_FILE_READY" = "true" ] && [ -f "telegram-artifacts.zip" ]; then
-
-              echo "status=💥 ERROR" >> $GITHUB_OUTPUT            echo "Enviando archivo de debugging por Telegram (solo para errores)..."
-
-              echo "message=Technical error occurred during execution" >> $GITHUB_OUTPUT            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
-
-              echo "should_send_files=true" >> $GITHUB_OUTPUT              -F chat_id="${CHAT_ID}" \
-
-            fi              -F document=@telegram-artifacts.zip \
-
-          fi              -F caption="� Archivos de debugging - Solo enviados en casos de error técnico o estado desconocido"
-
+            fi
+          else
+            if grep -qir "Transacción denegada\." test-results/ playwright-report/ 2>/dev/null; then
+              echo "status= DENIED" >> $GITHUB_OUTPUT
+              echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT
+              echo "should_send_files=false" >> $GITHUB_OUTPUT
+            else
+              echo "status= ERROR" >> $GITHUB_OUTPUT
+              echo "message=Technical error occurred during execution" >> $GITHUB_OUTPUT
+              echo "should_send_files=true" >> $GITHUB_OUTPUT
+            fi
           fi
 
-      - name: 📦 Prepare artifacts (Casa Ortega)        env:
+      - name: Analyze Huerta a Casa results
+        if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.huertaacasa_enabled == 'true'
+        id: analyze_huertaacasa
+        run: |
+          if [ "${HUERTAACASA_EXIT_CODE}" -eq 0 ]; then
+            if grep -qir "OPERACIÓN AUTORIZADA CON CÓDIGO:" test-results/ playwright-report/ 2>/dev/null; then
+              echo "status= SUCCESS" >> $GITHUB_OUTPUT
+              echo "message=Transaction completed successfully" >> $GITHUB_OUTPUT
+              echo "should_send_files=false" >> $GITHUB_OUTPUT
+            else
+              echo "status= UNKNOWN" >> $GITHUB_OUTPUT
+              echo "message=Test passed but no success confirmation found" >> $GITHUB_OUTPUT
+              echo "should_send_files=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            if grep -qir "Transacción denegada\." test-results/ playwright-report/ 2>/dev/null; then
+              echo "status= DENIED" >> $GITHUB_OUTPUT
+              echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT
+              echo "should_send_files=false" >> $GITHUB_OUTPUT
+            else
+              echo "status= ERROR" >> $GITHUB_OUTPUT
+              echo "message=Technical error occurred during execution" >> $GITHUB_OUTPUT
+              echo "should_send_files=true" >> $GITHUB_OUTPUT
+            fi
+          fi
 
-        if: |          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-
-          steps.check_schedule.outputs.should_run == 'true' &&           CHAT_ID: ${{ secrets.CHAT_ID }}
-
+      - name: Prepare artifacts Casa Ortega
+        if: |
+          steps.check_schedule.outputs.should_run == 'true' && 
           steps.read_config.outputs.casaortega_enabled == 'true' &&
           steps.analyze_casaortega.outputs.should_send_files == 'true'
         run: |
           mkdir -p artifacts/casaortega
-          [ -d "test-results" ] && cp -r test-results artifacts/casaortega/ || echo "No test-results found"
-          [ -d "playwright-report" ] && cp -r playwright-report artifacts/casaortega/ || echo "No playwright-report found"
+          [ -d "test-results" ] && cp -r test-results artifacts/casaortega/ || echo "No test-results"
+          [ -d "playwright-report" ] && cp -r playwright-report artifacts/casaortega/ || echo "No report"
           cd artifacts/casaortega
-          zip -r ../casaortega-results.zip . || echo "Zip creation failed"
+          zip -r ../casaortega-results.zip . || echo "Zip failed"
 
-      - name: 📦 Prepare artifacts (Huerta a Casa)
+      - name: Prepare artifacts Huerta a Casa
         if: |
           steps.check_schedule.outputs.should_run == 'true' && 
           steps.read_config.outputs.huertaacasa_enabled == 'true' &&
           steps.analyze_huertaacasa.outputs.should_send_files == 'true'
         run: |
           mkdir -p artifacts/huertaacasa
-          [ -d "test-results" ] && cp -r test-results artifacts/huertaacasa/ || echo "No test-results found"
-          [ -d "playwright-report" ] && cp -r playwright-report artifacts/huertaacasa/ || echo "No playwright-report found"
+          [ -d "test-results" ] && cp -r test-results artifacts/huertaacasa/ || echo "No test-results"
+          [ -d "playwright-report" ] && cp -r playwright-report artifacts/huertaacasa/ || echo "No report"
           cd artifacts/huertaacasa
-          zip -r ../huertaacasa-results.zip . || echo "Zip creation failed"
+          zip -r ../huertaacasa-results.zip . || echo "Zip failed"
 
-      - name: 📤 Send Casa Ortega notification to Telegram
+      - name: Send Casa Ortega notification
         if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.casaortega_enabled == 'true'
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
@@ -385,7 +190,7 @@ jobs:        uses: actions/checkout@v4
           MESSAGE="${{ steps.analyze_casaortega.outputs.message }}"
           SHOULD_SEND_FILES="${{ steps.analyze_casaortega.outputs.should_send_files }}"
           
-          TELEGRAM_MESSAGE="🏦 *${{ steps.read_config.outputs.casaortega_name }} - DAILY*%0A%0A${STATUS}%0A${MESSAGE}%0A%0A🕐 $(TZ=Europe/Madrid date '+%Y-%m-%d %H:%M:%S %Z')"
+          TELEGRAM_MESSAGE=" *${{ steps.read_config.outputs.casaortega_name }} - DAILY*%0A%0A${STATUS}%0A${MESSAGE}%0A%0A $(TZ=Europe/Madrid date '+%Y-%m-%d %H:%M:%S %Z')"
           
           curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
             -d chat_id="${CHAT_ID}" \
@@ -393,14 +198,14 @@ jobs:        uses: actions/checkout@v4
             -d parse_mode="Markdown"
           
           if [ "$SHOULD_SEND_FILES" = "true" ] && [ -f "artifacts/casaortega-results.zip" ]; then
-            echo "📎 Sending Casa Ortega files..."
+            echo " Sending Casa Ortega files..."
             curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
               -F chat_id="${CHAT_ID}" \
               -F document=@artifacts/casaortega-results.zip \
-              -F caption="Casa Ortega test results and screenshots"
+              -F caption="Casa Ortega test results"
           fi
 
-      - name: 📤 Send Huerta a Casa notification to Telegram
+      - name: Send Huerta a Casa notification
         if: steps.check_schedule.outputs.should_run == 'true' && steps.read_config.outputs.huertaacasa_enabled == 'true'
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
@@ -410,7 +215,7 @@ jobs:        uses: actions/checkout@v4
           MESSAGE="${{ steps.analyze_huertaacasa.outputs.message }}"
           SHOULD_SEND_FILES="${{ steps.analyze_huertaacasa.outputs.should_send_files }}"
           
-          TELEGRAM_MESSAGE="🌱 *${{ steps.read_config.outputs.huertaacasa_name }} - DAILY*%0A%0A${STATUS}%0A${MESSAGE}%0A%0A🕐 $(TZ=Europe/Madrid date '+%Y-%m-%d %H:%M:%S %Z')"
+          TELEGRAM_MESSAGE=" *${{ steps.read_config.outputs.huertaacasa_name }} - DAILY*%0A%0A${STATUS}%0A${MESSAGE}%0A%0A $(TZ=Europe/Madrid date '+%Y-%m-%d %H:%M:%S %Z')"
           
           curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
             -d chat_id="${CHAT_ID}" \
@@ -418,14 +223,14 @@ jobs:        uses: actions/checkout@v4
             -d parse_mode="Markdown"
           
           if [ "$SHOULD_SEND_FILES" = "true" ] && [ -f "artifacts/huertaacasa-results.zip" ]; then
-            echo "📎 Sending Huerta a Casa files..."
+            echo " Sending Huerta a Casa files..."
             curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
               -F chat_id="${CHAT_ID}" \
               -F document=@artifacts/huertaacasa-results.zip \
-              -F caption="Huerta a Casa test results and screenshots"
+              -F caption="Huerta a Casa test results"
           fi
 
-      - name: 🔄 Final status
+      - name: Final status
         if: steps.check_schedule.outputs.should_run == 'true'
         run: |
           echo "=== Execution Summary ==="
