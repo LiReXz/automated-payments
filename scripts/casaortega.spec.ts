@@ -315,7 +315,7 @@ test('Deposit funds in Casa Ortega virtual wallet', async ({ page }) => {
 
   // 🔹 Esperar resultado de la transacción (sin hacer fallar el test)
   console.log('⏳ Esperando resultado de la transacción...');
-  await page.waitForTimeout(10000); // Dar tiempo para que cargue el resultado
+  await page.waitForTimeout(15000); // Dar tiempo para que cargue el resultado
   
   // Buscar headings de éxito o denegación
   const successHeading = page.getByRole('heading', { name: /OPERACIÓN AUTORIZADA CON CÓDIGO:/i });

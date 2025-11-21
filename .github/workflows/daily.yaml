@@ -135,9 +135,13 @@ jobs:
         id: analyze_huertaacasa
         run: |
           if [ "${HUERTAACASA_EXIT_CODE}" -eq 0 ]; then
-            if grep -qir "OPERACIÓN AUTORIZADA CON CÓDIGO:" test-results/ playwright-report/ 2>/dev/null; then
+            if grep -qi "OPERACIÓN AUTORIZADA" test-results/ playwright-report/ 2>/dev/null; then
               echo "status= SUCCESS" >> $GITHUB_OUTPUT
               echo "message=Transaction completed successfully" >> $GITHUB_OUTPUT
+              echo "should_send_files=false" >> $GITHUB_OUTPUT
+            elif grep -qi "TRANSACCIÓN DENEGADA" test-results/ playwright-report/ 2>/dev/null; then
+              echo "status= DENIED" >> $GITHUB_OUTPUT
+              echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
             else
               echo "status= UNKNOWN" >> $GITHUB_OUTPUT
@@ -145,15 +149,9 @@ jobs:
               echo "should_send_files=true" >> $GITHUB_OUTPUT
             fi
           else
-            if grep -qir "Transacción denegada\." test-results/ playwright-report/ 2>/dev/null; then
-              echo "status= DENIED" >> $GITHUB_OUTPUT
-              echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT
-              echo "should_send_files=false" >> $GITHUB_OUTPUT
-            else
-              echo "status= ERROR" >> $GITHUB_OUTPUT
-              echo "message=Technical error occurred during execution" >> $GITHUB_OUTPUT
-              echo "should_send_files=true" >> $GITHUB_OUTPUT
-            fi
+            echo "status= ERROR" >> $GITHUB_OUTPUT
+            echo "message=Technical error occurred during execution" >> $GITHUB_OUTPUT
+            echo "should_send_files=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Prepare artifacts Casa Ortega

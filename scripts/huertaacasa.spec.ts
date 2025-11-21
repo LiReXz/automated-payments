@@ -27,7 +27,7 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   
   // 🔹 Esperar resultado de la transacción (sin hacer fallar el test)
   console.log('⏳ Esperando resultado de la transacción...');
-  await page.waitForTimeout(5000); // Dar tiempo para que cargue el resultado
+  await page.waitForTimeout(15000); // Dar tiempo para que cargue el resultado
   
   // Buscar texto de éxito o denegación en cualquier parte de la página
   const pageContent = await page.content();
