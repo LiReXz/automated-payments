@@ -1,0 +1,107 @@
+name: Casa Ortega - On Demand
+
+on:
+  workflow_dispatch:
+
+env:
+  TZ: Europe/Madrid
+
+jobs:
+  run-casaortega:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run Casa Ortega script
+        env:
+          USER_EMAIL: ${{ secrets.USER_EMAIL }}
+          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
+          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}
+          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
+          CARD_CVV: ${{ secrets.CARD_CVV }}
+        run: |
+          echo "🏦 Running Casa Ortega payment script..."
+          npx playwright test scripts/casaortega.spec.ts --project=chromium || exit_code=$?
+          echo "EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
+          exit 0
+
+      - name: Analyze results
+        id: analyze
+        run: |
+          if [ "${EXIT_CODE}" -eq 0 ]; then
+            if grep -qi "OPERACIÓN AUTORIZADA" test-results/ playwright-report/ 2>/dev/null; then
+              echo "status=SUCCESS" >> $GITHUB_OUTPUT
+              echo "should_send_files=false" >> $GITHUB_OUTPUT
+            elif grep -qi "TRANSACCIÓN DENEGADA" test-results/ playwright-report/ 2>/dev/null; then
+              echo "status=DENIED" >> $GITHUB_OUTPUT
+              echo "should_send_files=false" >> $GITHUB_OUTPUT
+            else
+              echo "status=UNKNOWN" >> $GITHUB_OUTPUT
+              echo "should_send_files=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "status=ERROR" >> $GITHUB_OUTPUT
+            echo "should_send_files=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare artifacts
+        if: steps.analyze.outputs.should_send_files == 'true'
+        run: |
+          mkdir -p artifacts
+          [ -d "test-results" ] && cp -r test-results artifacts/ || echo "No test-results"
+          [ -d "playwright-report" ] && cp -r playwright-report artifacts/ || echo "No report"
+          [ -f "unknown-state.png" ] && cp unknown-state.png artifacts/ || echo "No screenshot"
+          cd artifacts
+          zip -r ../results.zip . || echo "Zip failed"
+
+      - name: Send Telegram notification
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          STATUS="${{ steps.analyze.outputs.status }}"
+          SHOULD_SEND_FILES="${{ steps.analyze.outputs.should_send_files }}"
+          DATE=$(TZ=Europe/Madrid date '+%d/%m/%Y %H:%M:%S')
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
+          case "$STATUS" in
+            "SUCCESS")
+              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A✅ *TRANSACCIÓN ACEPTADA*%0A¡Felicidades! El depósito se realizó correctamente.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              ;;
+            "DENIED")
+              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A❌ *TRANSACCIÓN DENEGADA*%0APor favor, revisa si hay saldo disponible para hoy.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              ;;
+            "UNKNOWN")
+              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A❓ *ESTADO DESCONOCIDO*%0ANo se ha podido identificar el resultado. Revisa los archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              ;;
+            "ERROR")
+              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A💥 *ERROR TÉCNICO*%0AOcurrió un error durante la ejecución. Revisa los logs y archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              ;;
+          esac
+          
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CHAT_ID}" \
+            -d text="${MESSAGE}" \
+            -d parse_mode="Markdown" \
+            -d disable_web_page_preview=true
+          
+          if [ "$SHOULD_SEND_FILES" = "true" ] && [ -f "results.zip" ]; then
+            echo "📎 Sending files..."
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+              -F chat_id="${CHAT_ID}" \
+              -F document=@results.zip \
+              -F caption="📦 Archivos de debugging - Casa Ortega"
+          fi
