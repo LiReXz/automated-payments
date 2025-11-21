@@ -13,6 +13,7 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Depositar fondos' }).click();
   await page.getByRole('spinbutton', { name: 'Depositar fondos' }).fill('10');
   await page.getByRole('button', { name: 'Añadir fondos' }).click();
+  await page.getByRole('button', { name: 'Añadir fondos' }).click();
   
   // Realizar pedido
   await page.getByRole('checkbox', { name: 'He leído y acepto los té' }).check();
@@ -26,14 +27,12 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   
   // 🔹 Esperar resultado de la transacción (sin hacer fallar el test)
   console.log('⏳ Esperando resultado de la transacción...');
-  await page.waitForTimeout(10000); // Dar tiempo para que cargue el resultado
+  await page.waitForTimeout(5000); // Dar tiempo para que cargue el resultado
   
-  // Buscar headings de éxito o denegación
-  const successHeading = page.getByRole('heading', { name: /OPERACIÓN AUTORIZADA CON CÓDIGO:/i });
-  const deniedHeading = page.getByRole('heading', { name: /Transacción denegada/i });
-  
-  const isSuccess = await successHeading.isVisible().catch(() => false);
-  const isDenied = await deniedHeading.isVisible().catch(() => false);
+  // Buscar texto de éxito o denegación en cualquier parte de la página
+  const pageContent = await page.content();
+  const isSuccess = pageContent.includes('OPERACIÓN AUTORIZADA') || pageContent.includes('Gracias por tu pedido');
+  const isDenied = pageContent.includes('Transacción denegada') || pageContent.includes('denegada');
   
   if (isSuccess) {
     console.log('✅ OPERACIÓN AUTORIZADA - Pago realizado correctamente');
