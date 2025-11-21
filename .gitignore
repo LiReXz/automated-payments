@@ -7,3 +7,13 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 .env
+
+# Output logs and artifacts
+*.log
+*-unknown-state.png
+*-unknown-state.webm
+
+# Backup files
+*.bak
+*.tmp
+*.old

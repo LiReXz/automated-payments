@@ -35,7 +35,6 @@ jobs:
         run: |
           echo "🏦 Running Casa Ortega payment script..."
           npx playwright test scripts/casaortega.spec.ts --project=chromium > script_output.log 2>&1 || exit_code=$?
-          cat script_output.log
           echo "EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
           exit 0
 

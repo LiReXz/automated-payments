@@ -87,7 +87,6 @@ jobs:
         run: |
           echo "🏦 Running Casa Ortega payment script..."
           npx playwright test ${{ steps.read_config.outputs.casaortega_path }} --project=chromium > casaortega_output.log 2>&1 || exit_code=$?
-          cat casaortega_output.log
           echo "CASAORTEGA_EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
           exit 0
 
@@ -102,7 +101,6 @@ jobs:
         run: |
           echo "🌱 Running Huerta a Casa payment script..."
           npx playwright test ${{ steps.read_config.outputs.huertaacasa_path }} --project=chromium > huertaacasa_output.log 2>&1 || exit_code=$?
-          cat huertaacasa_output.log
           echo "HUERTAACASA_EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
           exit 0
 
