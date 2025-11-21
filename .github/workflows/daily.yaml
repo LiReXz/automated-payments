@@ -85,8 +85,9 @@ jobs:
           CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
           CARD_CVV: ${{ secrets.CARD_CVV }}
         run: |
-          echo " Running Casa Ortega payment script..."
-          npx playwright test ${{ steps.read_config.outputs.casaortega_path }} --project=chromium || exit_code=$?
+          echo "🏦 Running Casa Ortega payment script..."
+          npx playwright test ${{ steps.read_config.outputs.casaortega_path }} --project=chromium > casaortega_output.log 2>&1 || exit_code=$?
+          cat casaortega_output.log
           echo "CASAORTEGA_EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
           exit 0
 
@@ -99,8 +100,9 @@ jobs:
           CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
           CARD_CVV: ${{ secrets.CARD_CVV }}
         run: |
-          echo " Running Huerta a Casa payment script..."
-          npx playwright test ${{ steps.read_config.outputs.huertaacasa_path }} --project=chromium || exit_code=$?
+          echo "🌱 Running Huerta a Casa payment script..."
+          npx playwright test ${{ steps.read_config.outputs.huertaacasa_path }} --project=chromium > huertaacasa_output.log 2>&1 || exit_code=$?
+          cat huertaacasa_output.log
           echo "HUERTAACASA_EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
           exit 0
 
@@ -109,25 +111,23 @@ jobs:
         id: analyze_casaortega
         run: |
           if [ "${CASAORTEGA_EXIT_CODE}" -eq 0 ]; then
-            if grep -qir "OPERACIÓN AUTORIZADA CON CÓDIGO:" test-results/ playwright-report/ 2>/dev/null; then
-              echo "status= SUCCESS" >> $GITHUB_OUTPUT
+            if grep -q "OPERACIÓN AUTORIZADA CON CÓDIGO:" casaortega_output.log 2>/dev/null; then
+              echo "status=SUCCESS" >> $GITHUB_OUTPUT
               echo "message=Transaction completed successfully" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
-            else
-              echo "status= UNKNOWN" >> $GITHUB_OUTPUT
-              echo "message=Test passed but no success confirmation found" >> $GITHUB_OUTPUT
-              echo "should_send_files=true" >> $GITHUB_OUTPUT
-            fi
-          else
-            if grep -qir "Transacción denegada\." test-results/ playwright-report/ 2>/dev/null; then
-              echo "status= DENIED" >> $GITHUB_OUTPUT
+            elif grep -q "TRANSACCIÓN DENEGADA" casaortega_output.log 2>/dev/null; then
+              echo "status=DENIED" >> $GITHUB_OUTPUT
               echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
             else
-              echo "status= ERROR" >> $GITHUB_OUTPUT
-              echo "message=Technical error occurred during execution" >> $GITHUB_OUTPUT
+              echo "status=UNKNOWN" >> $GITHUB_OUTPUT
+              echo "message=Test passed but no confirmation found" >> $GITHUB_OUTPUT
               echo "should_send_files=true" >> $GITHUB_OUTPUT
             fi
+          else
+            echo "status=ERROR" >> $GITHUB_OUTPUT
+            echo "message=Technical error occurred during execution" >> $GITHUB_OUTPUT
+            echo "should_send_files=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Analyze Huerta a Casa results
@@ -135,21 +135,21 @@ jobs:
         id: analyze_huertaacasa
         run: |
           if [ "${HUERTAACASA_EXIT_CODE}" -eq 0 ]; then
-            if grep -qi "OPERACIÓN AUTORIZADA" test-results/ playwright-report/ 2>/dev/null; then
-              echo "status= SUCCESS" >> $GITHUB_OUTPUT
+            if grep -q "OPERACIÓN AUTORIZADA CON CÓDIGO:" huertaacasa_output.log 2>/dev/null; then
+              echo "status=SUCCESS" >> $GITHUB_OUTPUT
               echo "message=Transaction completed successfully" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
-            elif grep -qi "TRANSACCIÓN DENEGADA" test-results/ playwright-report/ 2>/dev/null; then
-              echo "status= DENIED" >> $GITHUB_OUTPUT
+            elif grep -q "TRANSACCIÓN DENEGADA" huertaacasa_output.log 2>/dev/null; then
+              echo "status=DENIED" >> $GITHUB_OUTPUT
               echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
             else
-              echo "status= UNKNOWN" >> $GITHUB_OUTPUT
-              echo "message=Test passed but no success confirmation found" >> $GITHUB_OUTPUT
+              echo "status=UNKNOWN" >> $GITHUB_OUTPUT
+              echo "message=Test passed but no confirmation found" >> $GITHUB_OUTPUT
               echo "should_send_files=true" >> $GITHUB_OUTPUT
             fi
           else
-            echo "status= ERROR" >> $GITHUB_OUTPUT
+            echo "status=ERROR" >> $GITHUB_OUTPUT
             echo "message=Technical error occurred during execution" >> $GITHUB_OUTPUT
             echo "should_send_files=true" >> $GITHUB_OUTPUT
           fi
@@ -190,16 +190,16 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           
           case "$STATUS" in
-            " SUCCESS")
+            "SUCCESS")
               MESSAGE="🏦 *CASA ORTEGA - DAILY*%0A%0A✅ *TRANSACCIÓN ACEPTADA*%0A¡Felicidades! El depósito se realizó correctamente.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
               ;;
-            " DENIED")
+            "DENIED")
               MESSAGE="🏦 *CASA ORTEGA - DAILY*%0A%0A❌ *TRANSACCIÓN DENEGADA*%0APor favor, revisa si hay saldo disponible para hoy.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
               ;;
-            " UNKNOWN")
+            "UNKNOWN")
               MESSAGE="🏦 *CASA ORTEGA - DAILY*%0A%0A❓ *ESTADO DESCONOCIDO*%0ANo se ha podido identificar el resultado. Revisa los archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
               ;;
-            " ERROR")
+            "ERROR")
               MESSAGE="🏦 *CASA ORTEGA - DAILY*%0A%0A💥 *ERROR TÉCNICO*%0AOcurrió un error durante la ejecución. Revisa los logs y archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
               ;;
           esac
@@ -230,16 +230,16 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           
           case "$STATUS" in
-            " SUCCESS")
+            "SUCCESS")
               MESSAGE="🌱 *HUERTA A CASA - DAILY*%0A%0A✅ *TRANSACCIÓN ACEPTADA*%0A¡Felicidades! El depósito se realizó correctamente.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
               ;;
-            " DENIED")
+            "DENIED")
               MESSAGE="🌱 *HUERTA A CASA - DAILY*%0A%0A❌ *TRANSACCIÓN DENEGADA*%0APor favor, revisa si hay saldo disponible para hoy.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
               ;;
-            " UNKNOWN")
+            "UNKNOWN")
               MESSAGE="🌱 *HUERTA A CASA - DAILY*%0A%0A❓ *ESTADO DESCONOCIDO*%0ANo se ha podido identificar el resultado. Revisa los archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
               ;;
-            " ERROR")
+            "ERROR")
               MESSAGE="🌱 *HUERTA A CASA - DAILY*%0A%0A💥 *ERROR TÉCNICO*%0AOcurrió un error durante la ejecución. Revisa los logs y archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
               ;;
           esac

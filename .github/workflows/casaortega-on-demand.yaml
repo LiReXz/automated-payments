@@ -34,7 +34,8 @@ jobs:
           CARD_CVV: ${{ secrets.CARD_CVV }}
         run: |
           echo "🏦 Running Casa Ortega payment script..."
-          npx playwright test scripts/casaortega.spec.ts --project=chromium || exit_code=$?
+          npx playwright test scripts/casaortega.spec.ts --project=chromium > script_output.log 2>&1 || exit_code=$?
+          cat script_output.log
           echo "EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
           exit 0
 
@@ -42,10 +43,10 @@ jobs:
         id: analyze
         run: |
           if [ "${EXIT_CODE}" -eq 0 ]; then
-            if grep -qi "OPERACIÓN AUTORIZADA" test-results/ playwright-report/ 2>/dev/null; then
+            if grep -q "OPERACIÓN AUTORIZADA CON CÓDIGO:" script_output.log 2>/dev/null; then
               echo "status=SUCCESS" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
-            elif grep -qi "TRANSACCIÓN DENEGADA" test-results/ playwright-report/ 2>/dev/null; then
+            elif grep -q "TRANSACCIÓN DENEGADA" script_output.log 2>/dev/null; then
               echo "status=DENIED" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
             else

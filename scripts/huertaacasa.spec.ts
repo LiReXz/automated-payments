@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 test('Huerta a Casa - Deposit Process', async ({ page }) => {
+  test.setTimeout(180000); // 3 minutos para evitar timeout
+  
   // Login
   await page.goto('https://delahuertacasa.com/login/');
   await page.getByRole('textbox', { name: 'Nombre de usuario o email' }).click();
@@ -39,7 +41,7 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   const isDenied = await deniedLocator.isVisible().catch(() => false);
   
   if (isSuccess) {
-    console.log('OPERACIÓN AUTORIZADA');
+    console.log('OPERACIÓN AUTORIZADA CON CÓDIGO:');
     await page.waitForTimeout(3000);
   } else if (isDenied) {
     console.log('TRANSACCIÓN DENEGADA');
