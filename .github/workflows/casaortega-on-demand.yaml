@@ -64,7 +64,6 @@ jobs:
           [ -d "test-results" ] && cp -r test-results artifacts/ || echo "No test-results"
           [ -d "playwright-report" ] && cp -r playwright-report artifacts/ || echo "No report"
           [ -f "casaortega-unknown-state.png" ] && cp casaortega-unknown-state.png artifacts/ || echo "No screenshot"
-          [ -f "casaortega-unknown-state.webm" ] && cp casaortega-unknown-state.webm artifacts/ || echo "No video"
           cd artifacts
           zip -r ../results.zip . || echo "Zip failed"
 
@@ -80,16 +79,16 @@ jobs:
           
           case "$STATUS" in
             "SUCCESS")
-              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A✅ *TRANSACCIÓN ACEPTADA*%0A¡Felicidades! El depósito se realizó correctamente.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A✅ *TRANSACCIÓN ACEPTADA*%0A¡Felicidades! El depósito se realizó correctamente.%0A%0A📅 ${DATE}%0A🔗 Ver detalles: ${WORKFLOW_URL}"
               ;;
             "DENIED")
-              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A❌ *TRANSACCIÓN DENEGADA*%0APor favor, revisa si hay saldo disponible para hoy.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A❌ *TRANSACCIÓN DENEGADA*%0APor favor, revisa si hay saldo disponible para hoy.%0A%0A📅 ${DATE}%0A🔗 Ver detalles: ${WORKFLOW_URL}"
               ;;
             "UNKNOWN")
-              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A❓ *ESTADO DESCONOCIDO*%0ANo se ha podido identificar el resultado. Revisa los archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A❓ *ESTADO DESCONOCIDO*%0ANo se ha podido identificar el resultado. Revisa los archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 Ver detalles: ${WORKFLOW_URL}"
               ;;
             "ERROR")
-              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A💥 *ERROR TÉCNICO*%0AOcurrió un error durante la ejecución. Revisa los logs y archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              MESSAGE="🏦 *CASA ORTEGA - ON DEMAND*%0A%0A💥 *ERROR TÉCNICO*%0AOcurrió un error durante la ejecución. Revisa los logs y archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 Ver detalles: ${WORKFLOW_URL}"
               ;;
           esac
           

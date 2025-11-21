@@ -31,10 +31,12 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   console.log('⏳ Esperando resultado de la transacción...');
   await page.waitForTimeout(30000); // Dar 30 segundos para que cargue el resultado
   
-  // Buscar texto de éxito o denegación en cualquier parte de la página
-  const pageContent = await page.content();
-  const isSuccess = pageContent.includes('OPERACIÓN AUTORIZADA') || pageContent.includes('Gracias por tu pedido');
-  const isDenied = pageContent.includes('Transacción denegada') || pageContent.includes('denegada');
+  // Buscar headings de éxito o denegación
+  const successHeading = page.getByRole('heading', { name: 'OPERACIÓN AUTORIZADA CON CÓDIGO:' });
+  const deniedHeading = page.getByRole('heading', { name: 'Transacción denegada por su' });
+  
+  const isSuccess = await successHeading.isVisible().catch(() => false);
+  const isDenied = await deniedHeading.isVisible().catch(() => false);
   
   if (isSuccess) {
     console.log('OPERACIÓN AUTORIZADA');
@@ -45,7 +47,6 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   } else {
     console.log('ESTADO DESCONOCIDO');
     await page.screenshot({ path: 'huertaacasa-unknown-state.png', fullPage: true });
-    await page.video()?.saveAs('huertaacasa-unknown-state.webm');
     await page.waitForTimeout(3000);
   }
   

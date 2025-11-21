@@ -333,7 +333,6 @@ test('Deposit funds in Casa Ortega virtual wallet', async ({ page }) => {
   } else {
     console.log('ESTADO DESCONOCIDO');
     await page.screenshot({ path: 'casaortega-unknown-state.png', fullPage: true });
-    await page.video()?.saveAs('casaortega-unknown-state.webm');
     await page.waitForTimeout(3000);
   }
   
