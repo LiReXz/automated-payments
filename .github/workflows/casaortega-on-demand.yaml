@@ -63,7 +63,8 @@ jobs:
           mkdir -p artifacts
           [ -d "test-results" ] && cp -r test-results artifacts/ || echo "No test-results"
           [ -d "playwright-report" ] && cp -r playwright-report artifacts/ || echo "No report"
-          [ -f "unknown-state.png" ] && cp unknown-state.png artifacts/ || echo "No screenshot"
+          [ -f "casaortega-unknown-state.png" ] && cp casaortega-unknown-state.png artifacts/ || echo "No screenshot"
+          [ -f "casaortega-unknown-state.webm" ] && cp casaortega-unknown-state.webm artifacts/ || echo "No video"
           cd artifacts
           zip -r ../results.zip . || echo "Zip failed"
 

@@ -63,7 +63,8 @@ jobs:
           mkdir -p artifacts
           [ -d "test-results" ] && cp -r test-results artifacts/ || echo "No test-results"
           [ -d "playwright-report" ] && cp -r playwright-report artifacts/ || echo "No report"
-          [ -f "unknown-state.png" ] && cp unknown-state.png artifacts/ || echo "No screenshot"
+          [ -f "huertaacasa-unknown-state.png" ] && cp huertaacasa-unknown-state.png artifacts/ || echo "No screenshot"
+          [ -f "huertaacasa-unknown-state.webm" ] && cp huertaacasa-unknown-state.webm artifacts/ || echo "No video"
           cd artifacts
           zip -r ../results.zip . || echo "Zip failed"
 
@@ -103,5 +104,5 @@ jobs:
             curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
               -F chat_id="${CHAT_ID}" \
               -F document=@results.zip \
-              -F caption="📦 Archivos de debugging - Casa Ortega"
+              -F caption="📦 Archivos de debugging - Huerta a Casa"
           fi

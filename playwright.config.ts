@@ -12,8 +12,8 @@ export default defineConfig({
     headless: true,
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    screenshot: 'off',
+    video: 'on',
     trace: 'on-first-retry'
   },
   projects: [

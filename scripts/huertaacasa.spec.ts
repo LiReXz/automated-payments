@@ -29,7 +29,7 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   
   // 🔹 Esperar resultado de la transacción (sin hacer fallar el test)
   console.log('⏳ Esperando resultado de la transacción...');
-  await page.waitForTimeout(15000); // Dar tiempo para que cargue el resultado
+  await page.waitForTimeout(30000); // Dar 30 segundos para que cargue el resultado
   
   // Buscar texto de éxito o denegación en cualquier parte de la página
   const pageContent = await page.content();
@@ -37,14 +37,15 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   const isDenied = pageContent.includes('Transacción denegada') || pageContent.includes('denegada');
   
   if (isSuccess) {
-    console.log('✅ OPERACIÓN AUTORIZADA - Pago realizado correctamente');
+    console.log('OPERACIÓN AUTORIZADA');
     await page.waitForTimeout(3000);
   } else if (isDenied) {
-    console.log('❌ TRANSACCIÓN DENEGADA - El pago fue denegado por el banco');
+    console.log('TRANSACCIÓN DENEGADA');
     await page.waitForTimeout(3000);
   } else {
-    console.log('⚠️ ESTADO DESCONOCIDO - No se detectó confirmación de éxito ni denegación');
-    await page.screenshot({ path: 'unknown-state.png', fullPage: true });
+    console.log('ESTADO DESCONOCIDO');
+    await page.screenshot({ path: 'huertaacasa-unknown-state.png', fullPage: true });
+    await page.video()?.saveAs('huertaacasa-unknown-state.webm');
     await page.waitForTimeout(3000);
   }
   
