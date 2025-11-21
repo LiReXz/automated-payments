@@ -1,4 +1,4 @@
-# 🏦 Automated Payments - Casa Ortega
+# 🏦 Automated Payments
 
 <div align="center">
 
@@ -7,7 +7,7 @@
 ![Playwright](https://img.shields.io/badge/Playwright-1.40.0-green?logo=playwright)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.1.6-blue?logo=typescript)
 
-**Automation system for Casa Ortega deposits with intelligent Telegram notifications**
+**Multi-process automation system with configurable scripts and intelligent Telegram notifications**
 
 </div>
 
@@ -15,7 +15,36 @@
 
 ## 📖 Description
 
-This project automates the deposit process for **Casa Ortega** virtual wallet using Playwright and GitHub Actions. The system intelligently detects transaction results and sends real-time notifications via Telegram.
+This project automates deposit processes for multiple services using Playwright and GitHub Actions. The system intelligently detects transaction results and sends real-time notifications via Telegram.
+
+### 🎯 Supported Services
+- **Casa Ortega** - Virtual wallet deposits
+- **Huerta a Casa** - Virtual wallet deposits
+
+Scripts are configured via `choose-script.json` and can be enabled/disabled individually.
+
+## ⚙️ Script Configuration
+
+Scripts are configured via `choose-script.json`:
+
+```json
+{
+  "scripts": {
+    "casaortega": {
+      "enabled": true,
+      "path": "scripts/casaortega.spec.ts",
+      "name": "CASA ORTEGA"
+    },
+    "huertaacasa": {
+      "enabled": true,
+      "path": "scripts/huertaacasa.spec.ts",
+      "name": "HUERTA A CASA"
+    }
+  }
+}
+```
+
+**To enable/disable a script**: Change `"enabled"` to `true` or `false`
 
 ## 🚀 Workflows
 
@@ -23,17 +52,19 @@ This project automates the deposit process for **Casa Ortega** virtual wallet us
 - **Execution**: Automatic at **15:00 Spanish time** (Monday to Friday)
 - **Respects**: Holidays defined in `holidays.txt`
 - **Time zones**: Automatically adjusts for Spanish summer/winter time
+- **Runs**: All enabled scripts in `choose-script.json`
 
 ### 🎮 Manual Execution (`on-demand.yaml`)
 - **Execution**: Manual from GitHub Actions
 - **Function**: Testing and on-demand executions
+- **Runs**: All enabled scripts in `choose-script.json`
 
 ## 📋 Environment Variables (GitHub Secrets)
 
 Configure the following variables in **GitHub Secrets** (`Settings > Secrets and variables > Actions`):
 
-### 🔐 Casa Ortega Credentials
-- `USER_EMAIL` - Your Casa Ortega account email
+### 🔐 Account Credentials
+- `USER_EMAIL` - Account email
 - `USER_PASSWORD` - Account password
 
 ### 💳 Card Data
@@ -47,29 +78,32 @@ Configure the following variables in **GitHub Secrets** (`Settings > Secrets and
 
 ## 🔔 Notifications
 
-The system sends intelligent Telegram notifications with different states:
+The system sends individual Telegram notifications for each enabled script:
 
 ### ✅ Successful Transaction
 ```
-🏦 Automated Payments - DAILY
-✅ SUCCESS: 🎉 Casa Ortega automatic deposit completed successfully!
-Date: 14/10/2025 15:00
+🏦 CASA ORTEGA - DAILY
+✅ SUCCESS
+Transaction completed successfully
+🕐 2025-11-21 15:00:00 CET
 ```
 **No files sent** - Normal operation
 
 ### ❌ Denied Transaction
 ```
-🏦 Automated Payments - MANUAL
-❌ TRANSACTION DENIED: 💳 The transaction was denied by the payment processor.
-Date: 14/10/2025 15:00
+� HUERTA A CASA - ON DEMAND
+❌ DENIED
+Transaction was denied by the bank
+🕐 2025-11-21 15:00:00 CET
 ```
 **No files sent** - Payment processor rejection (not a technical error)
 
 ### ⚠️ Technical Error
 ```
-🏦 Automated Payments - DAILY
-❌ TECHNICAL ERROR: ⚠️ Technical error in workflow execution. Review the logs.
-Date: 14/10/2025 15:00
+🏦 CASA ORTEGA - DAILY
+💥 ERROR
+Technical error occurred during execution
+🕐 2025-11-21 15:00:00 CET
 📁 Debugging files attached
 ```
 **Files included** - For technical troubleshooting only
@@ -98,7 +132,9 @@ automated-payments/
 │   ├── daily.yaml          # Daily automation
 │   └── on-demand.yaml      # Manual execution
 ├── scripts/
-│   └── deposit-wallet.spec.ts
+│   ├── casaortega.spec.ts  # Casa Ortega automation
+│   └── huertaacasa.spec.ts # Huerta a Casa automation
+├── choose-script.json      # Script configuration
 ├── holidays.txt            # Holiday management
 └── playwright.config.ts
 ```
@@ -107,8 +143,9 @@ automated-payments/
 
 1. **Clone**: `git clone https://github.com/LiReXz/automated-payments.git`
 2. **Configure**: Add all environment variables to GitHub Secrets
-3. **Test**: Use manual execution workflow for testing
-4. **Schedule**: Daily workflow runs automatically
+3. **Enable/Disable**: Edit `choose-script.json` to select which scripts to run
+4. **Test**: Use manual execution workflow for testing
+5. **Schedule**: Daily workflow runs automatically
 
 ---
 

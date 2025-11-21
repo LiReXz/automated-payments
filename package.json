@@ -1,9 +1,10 @@
 {
-  "name": "casa-ortega-automation",
+  "name": "automated-payments",
   "version": "1.0.0",
   "scripts": {
     "test": "npx playwright test",
-    "test:e2e": "npx playwright test scripts/deposit-wallet.spec.ts --project=chromium",
+    "test:casaortega": "npx playwright test scripts/casaortega.spec.ts --project=chromium",
+    "test:huertaacasa": "npx playwright test scripts/huertaacasa.spec.ts --project=chromium",
     "test:headed": "npx playwright test --headed",
     "test:debug": "npx playwright test --debug"
   },

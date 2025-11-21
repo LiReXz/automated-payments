@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "casaortega": {
+      "enabled": false,
+      "path": "scripts/casaortega.spec.ts",
+      "name": "CASA ORTEGA"
+    },
+    "huertaacasa": {
+      "enabled": true,
+      "path": "scripts/huertaacasa.spec.ts",
+      "name": "HUERTA A CASA"
+    }
+  }
+}
