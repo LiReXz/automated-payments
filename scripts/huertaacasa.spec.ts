@@ -31,12 +31,12 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   console.log('⏳ Esperando resultado de la transacción...');
   await page.waitForTimeout(30000); // Dar 30 segundos para que cargue el resultado
   
-  // Buscar headings de éxito o denegación
-  const successHeading = page.getByRole('heading', { name: 'OPERACIÓN AUTORIZADA CON CÓDIGO:' });
-  const deniedHeading = page.getByRole('heading', { name: 'Transacción denegada por su' });
+  // Buscar texto de éxito o denegación
+  const successLocator = page.locator('text=OPERACIÓN AUTORIZADA');
+  const deniedLocator = page.locator('text=Transacción denegada');
   
-  const isSuccess = await successHeading.isVisible().catch(() => false);
-  const isDenied = await deniedHeading.isVisible().catch(() => false);
+  const isSuccess = await successLocator.isVisible().catch(() => false);
+  const isDenied = await deniedLocator.isVisible().catch(() => false);
   
   if (isSuccess) {
     console.log('OPERACIÓN AUTORIZADA');
@@ -47,7 +47,12 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   } else {
     console.log('ESTADO DESCONOCIDO');
     await page.screenshot({ path: 'huertaacasa-unknown-state.png', fullPage: true });
+    const video = page.video();
     await page.waitForTimeout(3000);
+    if (video) {
+      await page.context().close();
+      await video.saveAs('huertaacasa-unknown-state.webm');
+    }
   }
   
   // El test siempre pasa - el workflow analizará los logs para determinar el estado real
