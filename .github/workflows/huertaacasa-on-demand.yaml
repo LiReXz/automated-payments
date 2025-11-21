@@ -43,12 +43,15 @@ jobs:
         id: analyze
         run: |
           if [ "${EXIT_CODE}" -eq 0 ]; then
-            if grep -q "OPERACIÓN AUTORIZADA CON CÓDIGO:" script_output.log 2>/dev/null; then
+            if grep -q "STATUS:OK" script_output.log 2>/dev/null; then
               echo "status=SUCCESS" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
-            elif grep -q "TRANSACCIÓN DENEGADA" script_output.log 2>/dev/null; then
+            elif grep -q "STATUS:KO" script_output.log 2>/dev/null; then
               echo "status=DENIED" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
+            elif grep -q "STATUS:UNKNOWN" script_output.log 2>/dev/null; then
+              echo "status=UNKNOWN" >> $GITHUB_OUTPUT
+              echo "should_send_files=true" >> $GITHUB_OUTPUT
             else
               echo "status=UNKNOWN" >> $GITHUB_OUTPUT
               echo "should_send_files=true" >> $GITHUB_OUTPUT

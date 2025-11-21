@@ -111,14 +111,18 @@ jobs:
         id: analyze_casaortega
         run: |
           if [ "${CASAORTEGA_EXIT_CODE}" -eq 0 ]; then
-            if grep -q "OPERACIÓN AUTORIZADA CON CÓDIGO:" casaortega_output.log 2>/dev/null; then
+            if grep -q "STATUS:OK" casaortega_output.log 2>/dev/null; then
               echo "status=SUCCESS" >> $GITHUB_OUTPUT
               echo "message=Transaction completed successfully" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
-            elif grep -q "TRANSACCIÓN DENEGADA" casaortega_output.log 2>/dev/null; then
+            elif grep -q "STATUS:KO" casaortega_output.log 2>/dev/null; then
               echo "status=DENIED" >> $GITHUB_OUTPUT
               echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
+            elif grep -q "STATUS:UNKNOWN" casaortega_output.log 2>/dev/null; then
+              echo "status=UNKNOWN" >> $GITHUB_OUTPUT
+              echo "message=Test passed but no confirmation found" >> $GITHUB_OUTPUT
+              echo "should_send_files=true" >> $GITHUB_OUTPUT
             else
               echo "status=UNKNOWN" >> $GITHUB_OUTPUT
               echo "message=Test passed but no confirmation found" >> $GITHUB_OUTPUT
@@ -135,14 +139,18 @@ jobs:
         id: analyze_huertaacasa
         run: |
           if [ "${HUERTAACASA_EXIT_CODE}" -eq 0 ]; then
-            if grep -q "OPERACIÓN AUTORIZADA CON CÓDIGO:" huertaacasa_output.log 2>/dev/null; then
+            if grep -q "STATUS:OK" huertaacasa_output.log 2>/dev/null; then
               echo "status=SUCCESS" >> $GITHUB_OUTPUT
               echo "message=Transaction completed successfully" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
-            elif grep -q "TRANSACCIÓN DENEGADA" huertaacasa_output.log 2>/dev/null; then
+            elif grep -q "STATUS:KO" huertaacasa_output.log 2>/dev/null; then
               echo "status=DENIED" >> $GITHUB_OUTPUT
               echo "message=Transaction was denied by the bank" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
+            elif grep -q "STATUS:UNKNOWN" huertaacasa_output.log 2>/dev/null; then
+              echo "status=UNKNOWN" >> $GITHUB_OUTPUT
+              echo "message=Test passed but no confirmation found" >> $GITHUB_OUTPUT
+              echo "should_send_files=true" >> $GITHUB_OUTPUT
             else
               echo "status=UNKNOWN" >> $GITHUB_OUTPUT
               echo "message=Test passed but no confirmation found" >> $GITHUB_OUTPUT
