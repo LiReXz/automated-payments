@@ -1,256 +1,107 @@
-name: Huerta a Casa - On Demandname: Huerta a Casa - On-Demand Execution
+name: Huerta a Casa - On Demand
 
+on:
+  workflow_dispatch:
 
+env:
+  TZ: Europe/Madrid
 
-on:on:
-
-  workflow_dispatch:  workflow_dispatch:
-
-
-
-env:jobs:
-
-  TZ: Europe/Madrid  run-on-demand:
-
+jobs:
+  run-huertaacasa:
     runs-on: ubuntu-latest
-
-jobs:    steps:
-
-  run-huertaacasa:      - name: Checkout repository
-
-    runs-on: ubuntu-latest        uses: actions/checkout@v4
-
     timeout-minutes: 20
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-    steps:        uses: actions/setup-node@v4
-
-      - name: Checkout repository        with:
-
-        uses: actions/checkout@v4          node-version: 18
-
-
-
-      - name: Setup Node.js      - name: Install dependencies
-
-        uses: actions/setup-node@v4        run: |
-
-        with:          npm ci
-
-          node-version: 18          npx playwright install --with-deps
-
-
-
-      - name: Install dependencies      - name: Run Playwright script
-
-        run: |        run: |
-
-          npm ci          npx playwright test scripts/huertaacasa.spec.ts --project=chromium --reporter=html,list || true
-
-          npx playwright install --with-deps chromium          echo "Test execution completed, checking results..."
-
-          ls -la test-results/ || echo "No test-results directory found"
-
-      - name: Run Huerta a Casa script          ls -la playwright-report/ || echo "No playwright-report directory found"
-
-        env:        env:
-
-          USER_EMAIL: ${{ secrets.USER_EMAIL }}          USER_EMAIL: ${{ secrets.USER_EMAIL }}
-
-          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
-
-          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}
-
-          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
-
-          CARD_CVV: ${{ secrets.CARD_CVV }}          CARD_CVV: ${{ secrets.CARD_CVV }}
-
+      - name: Install dependencies
         run: |
+          npm ci
+          npx playwright install --with-deps chromium
 
-          echo "🌱 Running Huerta a Casa payment script..."      - name: Show test output for debugging
+      - name: Run Huerta a Casa script
+        env:
+          USER_EMAIL: ${{ secrets.USER_EMAIL }}
+          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
+          CARD_NUMBER: ${{ secrets.CARD_NUMBER }}
+          CARD_EXPIRY: ${{ secrets.CARD_EXPIRY }}
+          CARD_CVV: ${{ secrets.CARD_CVV }}
+        run: |
+          echo "� Running Huerta a Casa payment script..."
+          npx playwright test scripts/huertaacasa.spec.ts --project=chromium || exit_code=$?
+          echo "EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV
+          exit 0
 
-          npx playwright test scripts/huertaacasa.spec.ts --project=chromium || exit_code=$?        if: always()
-
-          echo "EXIT_CODE=${exit_code:-0}" >> $GITHUB_ENV        run: |
-
-          exit 0          echo "=== Checking for screenshots and debug files ==="
-
-          ls -la *.png || echo "No PNG files found in root"
-
-      - name: Analyze results          echo "=== Checking test-results directory ==="
-
-        id: analyze          find test-results -name "*.png" -o -name "*.webm" -o -name "*.md" 2>/dev/null || echo "No test-results directory or files"
-
-        run: |          echo "=== Checking for HTML report ==="
-
-          if [ "${EXIT_CODE}" -eq 0 ]; then          find playwright-report -name "*.html" 2>/dev/null || echo "No HTML report found"
-
-            if grep -qi "OPERACIÓN AUTORIZADA" test-results/ playwright-report/ 2>/dev/null; then          echo "=== Test execution summary ==="
-
-              echo "status=SUCCESS" >> $GITHUB_OUTPUT          cat test-results/*/test-failed-*.png 2>/dev/null && echo "Screenshots found" || echo "No failure screenshots"
-
+      - name: Analyze results
+        id: analyze
+        run: |
+          if [ "${EXIT_CODE}" -eq 0 ]; then
+            if grep -qi "OPERACIÓN AUTORIZADA" test-results/ playwright-report/ 2>/dev/null; then
+              echo "status=SUCCESS" >> $GITHUB_OUTPUT
               echo "should_send_files=false" >> $GITHUB_OUTPUT
-
-            elif grep -qi "TRANSACCIÓN DENEGADA" test-results/ playwright-report/ 2>/dev/null; then      - name: Create artifacts for Telegram (Errors Only)
-
-              echo "status=DENIED" >> $GITHUB_OUTPUT        if: always()
-
-              echo "should_send_files=false" >> $GITHUB_OUTPUT        run: |
-
-            else          # Analizar el resultado ANTES de crear archivos
-
-              echo "status=UNKNOWN" >> $GITHUB_OUTPUT          echo "=== Analizando resultados para determinar si crear archivos ==="
-
-              echo "should_send_files=true" >> $GITHUB_OUTPUT          
-
-            fi          # Buscar indicadores de éxito o denegación (NO necesitan archivos de debugging)
-
-          else          if grep -qir "Transacción denegada\." test-results/ playwright-report/ 2>/dev/null; then
-
-            echo "status=ERROR" >> $GITHUB_OUTPUT            echo "Transacción denegada detectada - NO se enviarán archivos (no es error técnico)"
-
-            echo "should_send_files=true" >> $GITHUB_OUTPUT            echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
-
-          fi            echo "STATUS=❌ TRANSACCIÓN DENEGADA" >> $GITHUB_ENV
-
-          elif grep -qi "OPERACIÓN AUTORIZADA CON CÓDIGO:" test-results/ playwright-report/ 2>/dev/null; then
-
-      - name: Prepare artifacts            echo "Transacción exitosa detectada - NO se enviarán archivos (funcionamiento normal)"
-
-        if: steps.analyze.outputs.should_send_files == 'true'            echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
-
-        run: |            echo "STATUS=✅ ÉXITO" >> $GITHUB_ENV
-
-          mkdir -p artifacts          # Solo crear archivos para errores técnicos o estados desconocidos (problemas del workflow)
-
-          [ -d "test-results" ] && cp -r test-results artifacts/ || echo "No test-results"          else
-
-          [ -d "playwright-report" ] && cp -r playwright-report artifacts/ || echo "No report"            echo "Error técnico o estado desconocido - SÍ se enviarán archivos para debugging técnico"
-
-          [ -f "unknown-state.png" ] && cp unknown-state.png artifacts/ || echo "No screenshot"            if [ "${{ job.status }}" == "failure" ]; then
-
-          cd artifacts              echo "STATUS=❌ ERROR TÉCNICO" >> $GITHUB_ENV
-
-          zip -r ../results.zip . || echo "Zip failed"            else
-
-              echo "STATUS=⚠️ ESTADO DESCONOCIDO" >> $GITHUB_ENV
-
-      - name: Send Telegram notification            fi
-
-        env:            
-
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}            if [ -d "test-results" ] || [ -f "*.png" ] || [ -d "playwright-report" ]; then
-
-          CHAT_ID: ${{ secrets.CHAT_ID }}              echo "Creando archivo ZIP para debugging..."
-
-        run: |              zip -r telegram-artifacts.zip test-results/ *.png playwright-report/ 2>/dev/null || true
-
-          STATUS="${{ steps.analyze.outputs.status }}"              
-
-          SHOULD_SEND_FILES="${{ steps.analyze.outputs.should_send_files }}"              if [ -f "telegram-artifacts.zip" ]; then
-
-          DATE=$(TZ=Europe/Madrid date '+%d/%m/%Y %H:%M:%S')                FILE_SIZE=$(stat -c%s "telegram-artifacts.zip" 2>/dev/null || stat -f%z "telegram-artifacts.zip" 2>/dev/null || echo "0")
-
-          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"                echo "Archivo ZIP creado: ${FILE_SIZE} bytes"
-
-                          if [ "${FILE_SIZE}" -gt 52428800 ]; then
-
-          case "$STATUS" in                  echo "Archivo muy grande (>50MB), creando versión reducida..."
-
-            "SUCCESS")                  zip -r telegram-artifacts-reduced.zip test-results/*.png playwright-report/index.html 2>/dev/null || true
-
-              MESSAGE="🌱 *HUERTA A CASA - ON DEMAND*%0A%0A✅ *TRANSACCIÓN ACEPTADA*%0A¡Felicidades! El depósito se realizó correctamente.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"                  mv telegram-artifacts-reduced.zip telegram-artifacts.zip 2>/dev/null || true
-
-              ;;                fi
-
-            "DENIED")                echo "TELEGRAM_FILE_READY=true" >> $GITHUB_ENV
-
-              MESSAGE="🌱 *HUERTA A CASA - ON DEMAND*%0A%0A❌ *TRANSACCIÓN DENEGADA*%0APor favor, revisa si hay saldo disponible para hoy.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"              else
-
-              ;;                echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
-
-            "UNKNOWN")              fi
-
-              MESSAGE="🌱 *HUERTA A CASA - ON DEMAND*%0A%0A❓ *ESTADO DESCONOCIDO*%0ANo se ha podido identificar el resultado. Revisa los archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"            else
-
-              ;;              echo "No hay archivos de debugging disponibles"
-
-            "ERROR")              echo "TELEGRAM_FILE_READY=false" >> $GITHUB_ENV
-
-              MESSAGE="🌱 *HUERTA A CASA - ON DEMAND*%0A%0A💥 *ERROR TÉCNICO*%0AOcurrió un error durante la ejecución. Revisa los logs y archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"            fi
-
-              ;;          fi
-
-          esac
-
-                - name: Send Telegram notification with files (errors only)
-
-          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \        if: always()
-
-            -d chat_id="${CHAT_ID}" \        run: |
-
-            -d text="${MESSAGE}" \          # Usar el estado ya determinado en el paso anterior
-
-            -d parse_mode="Markdown" \          case "$STATUS" in
-
-            -d disable_web_page_preview=true            "✅ ÉXITO")
-
-                        MESSAGE="🎉 El depósito automático de Huerta a Casa (MANUAL) se realizó correctamente!"
-
-          if [ "$SHOULD_SEND_FILES" = "true" ] && [ -f "results.zip" ]; then              ;;
-
-            echo "📎 Sending files..."            "❌ TRANSACCIÓN DENEGADA")
-
-            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \              MESSAGE="💳 La transacción fue denegada por el procesador de pagos (MANUAL)."
-
-              -F chat_id="${CHAT_ID}" \              ;;
-
-              -F document=@results.zip \            "❌ ERROR TÉCNICO")
-
-              -F caption="📦 Archivos de debugging - Huerta a Casa"              MESSAGE="⚠️ Error técnico en la ejecución del workflow manual. Revisa los logs."
-
-          fi              ;;
-
-            "⚠️ ESTADO DESCONOCIDO")
-              MESSAGE="🔍 No se pudo determinar el resultado de la transacción manual. Revisa el reporte."
-              ;;
-            *)
-              STATUS="⚠️ ESTADO DESCONOCIDO"
-              MESSAGE="🔍 No se pudo determinar el resultado de la transacción manual. Revisa el reporte."
-              ;;
-          esac
-          
-          # Preparar mensaje base
-          FULL_MESSAGE="🌱 *HUERTA A CASA - ON DEMAND*
-          
-          $STATUS: $MESSAGE
-          
-          Fecha: $(date '+%d/%m/%Y %H:%M')
-          Ver detalles: https://github.com/LiReXz/automated-payments/actions/runs/${{ github.run_id }}"
-          
-          # Solo agregar información de archivos si es error técnico o desconocido
-          if [ "$TELEGRAM_FILE_READY" = "true" ]; then
-            FULL_MESSAGE="${FULL_MESSAGE}
-            
-          📁 *Archivos de debugging adjuntos*
-          ⚠️ *Solo se envían archivos en casos de error para debugging*"
+            elif grep -qi "TRANSACCIÓN DENEGADA" test-results/ playwright-report/ 2>/dev/null; then
+              echo "status=DENIED" >> $GITHUB_OUTPUT
+              echo "should_send_files=false" >> $GITHUB_OUTPUT
+            else
+              echo "status=UNKNOWN" >> $GITHUB_OUTPUT
+              echo "should_send_files=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "status=ERROR" >> $GITHUB_OUTPUT
+            echo "should_send_files=true" >> $GITHUB_OUTPUT
           fi
 
-          # Enviar mensaje de texto
-          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-            -d chat_id="${CHAT_ID}" \
-            -d text="$FULL_MESSAGE" \
-            -d parse_mode="Markdown"
-          
-          # Enviar archivo solo si hay error técnico o estado desconocido
-          if [ "$TELEGRAM_FILE_READY" = "true" ] && [ -f "telegram-artifacts.zip" ]; then
-            echo "Enviando archivo de debugging por Telegram (solo para errores)..."
-            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
-              -F chat_id="${CHAT_ID}" \
-              -F document=@telegram-artifacts.zip \
-              -F caption="📁 Archivos de debugging - Solo enviados en casos de error técnico o estado desconocido"
-          fi
+      - name: Prepare artifacts
+        if: steps.analyze.outputs.should_send_files == 'true'
+        run: |
+          mkdir -p artifacts
+          [ -d "test-results" ] && cp -r test-results artifacts/ || echo "No test-results"
+          [ -d "playwright-report" ] && cp -r playwright-report artifacts/ || echo "No report"
+          [ -f "unknown-state.png" ] && cp unknown-state.png artifacts/ || echo "No screenshot"
+          cd artifacts
+          zip -r ../results.zip . || echo "Zip failed"
+
+      - name: Send Telegram notification
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          STATUS="${{ steps.analyze.outputs.status }}"
+          SHOULD_SEND_FILES="${{ steps.analyze.outputs.should_send_files }}"
+          DATE=$(TZ=Europe/Madrid date '+%d/%m/%Y %H:%M:%S')
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
+          case "$STATUS" in
+            "SUCCESS")
+              MESSAGE="� *HUERTA A CASA - ON DEMAND*%0A%0A✅ *TRANSACCIÓN ACEPTADA*%0A¡Felicidades! El depósito se realizó correctamente.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              ;;
+            "DENIED")
+              MESSAGE="� *HUERTA A CASA - ON DEMAND*%0A%0A❌ *TRANSACCIÓN DENEGADA*%0APor favor, revisa si hay saldo disponible para hoy.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              ;;
+            "UNKNOWN")
+              MESSAGE="� *HUERTA A CASA - ON DEMAND*%0A%0A❓ *ESTADO DESCONOCIDO*%0ANo se ha podido identificar el resultado. Revisa los archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              ;;
+            "ERROR")
+              MESSAGE="� *HUERTA A CASA - ON DEMAND*%0A%0A💥 *ERROR TÉCNICO*%0AOcurrió un error durante la ejecución. Revisa los logs y archivos adjuntos.%0A%0A📅 ${DATE}%0A🔗 [Ver detalles](${WORKFLOW_URL})"
+              ;;
+          esac
+          
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d chat_id="${CHAT_ID}" \
+            -d text="${MESSAGE}" \
+            -d parse_mode="Markdown" \
+            -d disable_web_page_preview=true
+          
+          if [ "$SHOULD_SEND_FILES" = "true" ] && [ -f "results.zip" ]; then
+            echo "📎 Sending files..."
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+              -F chat_id="${CHAT_ID}" \
+              -F document=@results.zip \
+              -F caption="📦 Archivos de debugging - Casa Ortega"
+          fi
