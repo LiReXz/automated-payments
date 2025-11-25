@@ -19,9 +19,6 @@ test('La Exquisita - Deposit Process', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Contraseña' }).fill(process.env.USER_PASSWORD || '');
   await page.getByRole('button', { name: 'Conectarse' }).click();
   
-  await page.waitForLoadState('networkidle', { timeout: 60000 });
-  await page.goto('https://laexquisitadenin.com/', { waitUntil: 'networkidle', timeout: 60000 });
-  
   await page.getByRole('link', { name: ' Mi cuenta' }).click();
   await page.waitForTimeout(1000);
   
