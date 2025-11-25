@@ -23,7 +23,6 @@ test('La Exquisita - Deposit Process', async ({ page }) => {
   await page.waitForTimeout(1000);
   
   await page.getByRole('link', { name: 'Cuenta virtual' }).click();
-  await page.waitForLoadState('networkidle', { timeout: 60000 });
   
   await page.getByRole('link', { name: 'RECARGAR DINERO' }).click();
   await page.waitForTimeout(1000);
@@ -37,13 +36,11 @@ test('La Exquisita - Deposit Process', async ({ page }) => {
   await page.waitForTimeout(1000);
   
   await page.getByRole('link', { name: 'Pasar por caja' }).click();
-  await page.waitForLoadState('networkidle', { timeout: 60000 });
   
   await page.getByRole('button', { name: 'Continuar' }).click();
   await page.waitForTimeout(2000);
   
   await page.getByRole('button', { name: 'Continuar' }).click();
-  await page.waitForLoadState('networkidle', { timeout: 60000 });
   
   await page.getByText('Pago con Tarjeta').first().click();
   await page.waitForTimeout(1000);
