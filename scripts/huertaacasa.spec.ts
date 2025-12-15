@@ -5,7 +5,8 @@ test('Huerta a Casa - Deposit Process', async ({ page }) => {
   
   // Login
   await page.goto('https://delahuertacasa.com/login/');
-  await page.getByRole('button', { name: 'Aceptar todo' }).click();
+
+  // await page.getByRole('button', { name: 'Aceptar todo' }).click();
   await page.getByRole('textbox', { name: 'Nombre de usuario o email' }).click();
   await page.getByRole('textbox', { name: 'Nombre de usuario o email' }).fill(process.env.USER_EMAIL || '');
   await page.getByRole('textbox', { name: 'Contraseña' }).click();
